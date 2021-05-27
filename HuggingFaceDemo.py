@@ -143,26 +143,30 @@ def demo():
 def demo_simcse():
     path_model_simcse_sup = r'E:\data\huggingface\sup-simcse-bert-base-uncased'
     path_model_simcse_unsup = r'E:\data\huggingface\unsup-simcse-bert-base-uncased'
-    if True:
+    if False:
         model = AutoModel.from_pretrained(path_model_simcse_unsup)
         tokenizer = AutoTokenizer.from_pretrained(path_model_simcse_unsup)
 
         # Tokenize input texts
+        # texts = [
+        #     "A woman is reading.",
+        #     "There's a kid on a skateboard.",
+        #     "A kid is skateboarding.",
+        #     "A kid is inside the house."
+        # ]
         texts = [
-            "There's a kid on a skateboard.",
-            "A kid is skateboarding.",
-            "A kid is inside the house."
+            "A woman is reading."
         ]
         inputs = tokenizer(texts, padding=True, truncation=True, return_tensors="pt")
 
         # Get the embeddings
         with torch.no_grad():
-            embeddings = model(**inputs, output_hidden_states=True, return_dict=True).pooler_output
+            embeddings_1 = model(**inputs, output_hidden_states=True, return_dict=True).pooler_output
 
         # Calculate cosine similarities
         # Cosine similarities are in [-1, 1]. Higher means more similar
-        cosine_sim_0_1 = 1 - cosine(embeddings[0], embeddings[1])
-        cosine_sim_0_2 = 1 - cosine(embeddings[0], embeddings[2])
+        cosine_sim_0_1 = 1 - cosine(embeddings_1[0], embeddings_1[1])
+        cosine_sim_0_2 = 1 - cosine(embeddings_1[0], embeddings_1[2])
 
         print("Cosine similarity between \"%s\" and \"%s\" is: %.3f" % (texts[0], texts[1], cosine_sim_0_1))
         print("Cosine similarity between \"%s\" and \"%s\" is: %.3f" % (texts[0], texts[2], cosine_sim_0_2))
@@ -170,7 +174,7 @@ def demo_simcse():
     else:
         from simcse import SimCSE
         model = SimCSE(path_model_simcse_unsup)
-        embeddings = model.encode("A woman is reading.")
+        embeddings_2 = model.encode("A woman is reading.")
         sentences_a = ['A woman is reading.', 'A man is playing a guitar.']
         sentences_b = ['He plays guitar.', 'A woman is making a photo.']
         similarities = model.similarity(sentences_a, sentences_b)

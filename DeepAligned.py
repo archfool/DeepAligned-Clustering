@@ -9,6 +9,7 @@ class ModelManager:
 
     def __init__(self, args, data, pretrained_model=None):
 
+        # todo 加载模型
         if pretrained_model is None:
             pretrained_model = BertForModel.from_pretrained(args.bert_model, cache_dir="", num_labels=data.n_known_cls)
             if os.path.exists(args.pretrain_dir):
@@ -29,10 +30,11 @@ class ModelManager:
         # todo 根据估计出的簇个数，调整label个数，重置预训练模型
         self.model = BertForModel.from_pretrained(args.bert_model, cache_dir="", num_labels=self.num_labels)
 
+        # todo 加载self.pretrained_model的模型参数至self.model，除了分类层
         if args.pretrain:
-            # todo 删除分类层
             self.load_pretrained_model(args)
 
+        # todo 冻结除了12层和pooler层之外的所有参数
         if args.freeze_bert_parameters:
             self.freeze_parameters(self.model)
 
@@ -266,7 +268,8 @@ if __name__ == '__main__':
     parser = init_model()
     args = parser.parse_args()
     if os.path.exists("D:"):
-        args.bert_model = r'E:\data\huggingface\bert-base-uncased'
+        # args.bert_model = r'E:\data\huggingface\bert-base-uncased'
+        args.bert_model = r'E:\data\huggingface\unsup-simcse-bert-base-uncased'
         # args.max_seq_length = 128
         args.num_train_epochs = 2
         args.labeled_ratio = 0.4
