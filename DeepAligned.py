@@ -4,37 +4,43 @@ from dataloader import *
 from pretrain import *
 from util import *
 
+
 class ModelManager:
-    
+
     def __init__(self, args, data, pretrained_model=None):
-        
+
         if pretrained_model is None:
-            pretrained_model = BertForModel.from_pretrained(args.bert_model, cache_dir = "", num_labels = data.n_known_cls)
+            pretrained_model = BertForModel.from_pretrained(args.bert_model, cache_dir="", num_labels=data.n_known_cls)
             if os.path.exists(args.pretrain_dir):
                 pretrained_model = self.restore_model(args.pretrained_model)
         self.pretrained_model = pretrained_model
 
-        os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id           
+        os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+        # todo 当cluster_num_factor<=1时，不会执行低质簇剔除的策略
         if args.cluster_num_factor > 1:
-            self.num_labels = self.predict_k(args, data) 
+            # todo 进行聚类，剔除低密度的簇，统计符合条件的簇的个数
+            # todo 只会在训练deepcluster之前进行一次簇个数的估计
+            self.num_labels = self.predict_k(args, data)
         else:
-            self.num_labels = data.num_labels       
+            self.num_labels = data.num_labels
 
-        self.model = BertForModel.from_pretrained(args.bert_model, cache_dir = "", num_labels = self.num_labels)    
-        
+        # todo 根据估计出的簇个数，调整label个数，重置预训练模型
+        self.model = BertForModel.from_pretrained(args.bert_model, cache_dir="", num_labels=self.num_labels)
+
         if args.pretrain:
+            # todo 删除分类层
             self.load_pretrained_model(args)
 
         if args.freeze_bert_parameters:
             self.freeze_parameters(self.model)
-            
+
         self.model.to(self.device)
 
         num_train_examples = len(data.train_labeled_examples) + len(data.train_unlabeled_examples)
         self.num_train_optimization_steps = int(num_train_examples / args.train_batch_size) * args.num_train_epochs
-        
+
         self.optimizer = self.get_optimizer(args)
 
         self.best_eval_score = 0
@@ -45,16 +51,16 @@ class ModelManager:
         self.true_labels = None
 
     def get_features_labels(self, dataloader, model, args):
-        
+
         model.eval()
-        total_features = torch.empty((0,args.feat_dim)).to(self.device)
-        total_labels = torch.empty(0,dtype=torch.long).to(self.device)
+        total_features = torch.empty((0, args.feat_dim)).to(self.device)
+        total_labels = torch.empty(0, dtype=torch.long).to(self.device)
 
         for batch in tqdm(dataloader, desc="Extracting representation"):
             batch = tuple(t.to(self.device) for t in batch)
             input_ids, input_mask, segment_ids, label_ids = batch
             with torch.no_grad():
-                feature = model(input_ids, segment_ids, input_mask, feature_ext = True)
+                feature = model(input_ids, segment_ids, input_mask, feature_ext=True)
 
             total_features = torch.cat((total_features, feature))
             total_labels = torch.cat((total_labels, label_ids))
@@ -62,60 +68,62 @@ class ModelManager:
         return total_features, total_labels
 
     def predict_k(self, args, data):
-        
+
         feats, _ = self.get_features_labels(data.train_semi_dataloader, self.pretrained_model, args)
         feats = feats.cpu().numpy()
-        km = KMeans(n_clusters = data.num_labels).fit(feats)
+        km = KMeans(n_clusters=data.num_labels).fit(feats)
         y_pred = km.labels_
 
         pred_label_list = np.unique(y_pred)
+        # todo 簇的筛选门限值
         drop_out = len(feats) / data.num_labels
-        print('drop',drop_out)
+        print('drop threshold:', drop_out)
 
         cnt = 0
         for label in pred_label_list:
-            num = len(y_pred[y_pred == label]) 
+            num = len(y_pred[y_pred == label])
             if num < drop_out:
                 cnt += 1
 
         num_labels = len(pred_label_list) - cnt
-        print('pred_num',num_labels)
+        print('pred_num', num_labels)
 
         return num_labels
-    
+
     def get_optimizer(self, args):
         param_optimizer = list(self.model.named_parameters())
         no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
+        # todo 不知道weight_decay是干吗用的
         optimizer_grouped_parameters = [
             {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)], 'weight_decay': 0.01},
             {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
         ]
         optimizer = BertAdam(optimizer_grouped_parameters,
-                         lr = args.lr,
-                         warmup = args.warmup_proportion,
-                         t_total = self.num_train_optimization_steps)   
+                             lr=args.lr,
+                             warmup=args.warmup_proportion,
+                             t_total=self.num_train_optimization_steps)
         return optimizer
 
     def evaluation(self, args, data):
 
         feats, labels = self.get_features_labels(data.test_dataloader, self.model, args)
         feats = feats.cpu().numpy()
-        km = KMeans(n_clusters = self.num_labels).fit(feats)
+        km = KMeans(n_clusters=self.num_labels).fit(feats)
 
         y_pred = km.labels_
         y_true = labels.cpu().numpy()
 
         results = clustering_score(y_true, y_pred)
-        print('results',results)
-        
+        print('results', results)
+
         ind, _ = hungray_aligment(y_true, y_pred)
-        map_ = {i[0]:i[1] for i in ind}
+        map_ = {i[0]: i[1] for i in ind}
         y_pred = np.array([map_[idx] for idx in y_pred])
 
-        cm = confusion_matrix(y_true,y_pred)   
-        print('confusion matrix',cm)
+        cm = confusion_matrix(y_true, y_pred)
+        print('confusion matrix', cm)
         self.test_results = results
-        
+
         self.save_results(args)
 
     def alignment(self, km, args):
@@ -124,49 +132,51 @@ class ModelManager:
 
             old_centroids = self.centroids.cpu().numpy()
             new_centroids = km.cluster_centers_
-            
-            DistanceMatrix = np.linalg.norm(old_centroids[:,np.newaxis,:]-new_centroids[np.newaxis,:,:],axis=2) 
+
+            DistanceMatrix = np.linalg.norm(old_centroids[:, np.newaxis, :] - new_centroids[np.newaxis, :, :], axis=2)
+            # linear_sum_assignment函数输入为cost矩阵。cost[i, j]表示工人i执行任务j所要花费的代价。
+            # linear_sum_assignment函数输出row_ind和col_ind。row_ind表示选择哪几个工人，col_ind表示工人做哪个工作。
             row_ind, col_ind = linear_sum_assignment(DistanceMatrix)
-            
+
             new_centroids = torch.tensor(new_centroids).to(self.device)
-            self.centroids = torch.empty(self.num_labels ,args.feat_dim).to(self.device)
-            
+            self.centroids = torch.empty(self.num_labels, args.feat_dim).to(self.device)
+
             alignment_labels = list(col_ind)
             for i in range(self.num_labels):
                 label = alignment_labels[i]
                 self.centroids[i] = new_centroids[label]
-                
-            pseudo2label = {label:i for i,label in enumerate(alignment_labels)}
+
+            pseudo2label = {label: i for i, label in enumerate(alignment_labels)}
             pseudo_labels = np.array([pseudo2label[label] for label in km.labels_])
 
         else:
-            self.centroids = torch.tensor(km.cluster_centers_).to(self.device)        
-            pseudo_labels = km.labels_ 
+            self.centroids = torch.tensor(km.cluster_centers_).to(self.device)
+            pseudo_labels = km.labels_
 
         pseudo_labels = torch.tensor(pseudo_labels, dtype=torch.long).to(self.device)
-        
+
         return pseudo_labels
 
     def update_pseudo_labels(self, pseudo_labels, args, data):
         train_data = TensorDataset(data.semi_input_ids, data.semi_input_mask, data.semi_segment_ids, pseudo_labels)
         train_sampler = SequentialSampler(train_data)
-        train_dataloader = DataLoader(train_data, sampler = train_sampler, batch_size = args.train_batch_size)
+        train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=args.train_batch_size)
         return train_dataloader
 
-    def train(self, args, data): 
+    def train(self, args, data):
 
         best_score = 0
         best_model = None
         wait = 0
 
-        for epoch in trange(int(args.num_train_epochs), desc="Epoch"):  
+        for epoch in trange(int(args.num_train_epochs), desc="Epoch"):
 
             feats, _ = self.get_features_labels(data.train_semi_dataloader, self.model, args)
             feats = feats.cpu().numpy()
-            km = KMeans(n_clusters = self.num_labels).fit(feats)
-            
+            km = KMeans(n_clusters=self.num_labels).fit(feats)
+
             score = metrics.silhouette_score(feats, km.labels_)
-            print('score',score)
+            print('score', score)
 
             if score > best_score:
                 best_model = copy.deepcopy(self.model)
@@ -176,22 +186,21 @@ class ModelManager:
                 wait += 1
                 if wait >= args.wait_patient:
                     self.model = best_model
-                    break 
-            
+                    break
+
             pseudo_labels = self.alignment(km, args)
             train_dataloader = self.update_pseudo_labels(pseudo_labels, args, data)
-            
+
             tr_loss = 0
             nb_tr_examples, nb_tr_steps = 0, 0
             self.model.train()
 
             for batch in tqdm(train_dataloader, desc="Pseudo-Training"):
-
                 batch = tuple(t.to(self.device) for t in batch)
                 input_ids, input_mask, segment_ids, label_ids = batch
 
                 loss = self.model(input_ids, segment_ids, input_mask, label_ids, mode='train')
-                
+
                 loss.backward()
 
                 tr_loss += loss.item()
@@ -200,25 +209,23 @@ class ModelManager:
 
                 self.optimizer.step()
                 self.optimizer.zero_grad()
-            
+
             tr_loss = tr_loss / nb_tr_steps
-            print('train_loss',tr_loss)
-        
+            print('train_loss', tr_loss)
 
     def load_pretrained_model(self, args):
         pretrained_dict = self.pretrained_model.state_dict()
-        classifier_params = ['classifier.weight','classifier.bias']
-        pretrained_dict =  {k: v for k, v in pretrained_dict.items() if k not in classifier_params}
+        classifier_params = ['classifier.weight', 'classifier.bias']
+        pretrained_dict = {k: v for k, v in pretrained_dict.items() if k not in classifier_params}
         self.model.load_state_dict(pretrained_dict, strict=False)
-        
 
     def restore_model(self, args, model):
         output_model_file = os.path.join(args.pretrain_dir, WEIGHTS_NAME)
         model.load_state_dict(torch.load(output_model_file))
         return model
-    
-    def freeze_parameters(self,model):
-        for name, param in model.bert.named_parameters():  
+
+    def freeze_parameters(self, model):
+        for name, param in model.bert.named_parameters():
             param.requires_grad = False
             if "encoder.layer.11" in name or "pooler" in name:
                 param.requires_grad = True
@@ -227,35 +234,42 @@ class ModelManager:
         if not os.path.exists(args.save_results_path):
             os.makedirs(args.save_results_path)
 
-        var = [args.dataset, args.method, args.known_cls_ratio, args.labeled_ratio, args.cluster_num_factor, args.seed, self.num_labels]
-        names = ['dataset', 'method', 'known_cls_ratio', 'labeled_ratio', 'cluster_num_factor','seed', 'K']
-        vars_dict = {k:v for k,v in zip(names, var) }
-        results = dict(self.test_results,**vars_dict)
+        var = [args.dataset, args.method, args.known_cls_ratio, args.labeled_ratio, args.cluster_num_factor, args.seed,
+               self.num_labels]
+        names = ['dataset', 'method', 'known_cls_ratio', 'labeled_ratio', 'cluster_num_factor', 'seed', 'K']
+        vars_dict = {k: v for k, v in zip(names, var)}
+        results = dict(self.test_results, **vars_dict)
         keys = list(results.keys())
         values = list(results.values())
-        
-        file_name = 'results'  + '.csv'
+
+        file_name = 'results' + '.csv'
         results_path = os.path.join(args.save_results_path, file_name)
-        
+
         if not os.path.exists(results_path):
             ori = []
             ori.append(values)
-            df1 = pd.DataFrame(ori,columns = keys)
-            df1.to_csv(results_path,index=False)
+            df1 = pd.DataFrame(ori, columns=keys)
+            df1.to_csv(results_path, index=False)
         else:
             df1 = pd.read_csv(results_path)
-            new = pd.DataFrame(results,index=[1])
-            df1 = df1.append(new,ignore_index=True)
-            df1.to_csv(results_path,index=False)
+            new = pd.DataFrame(results, index=[1])
+            df1 = df1.append(new, ignore_index=True)
+            df1.to_csv(results_path, index=False)
         data_diagram = pd.read_csv(results_path)
-        
+
         print('test_results', data_diagram)
+
 
 if __name__ == '__main__':
 
     print('Data and Parameters Initialization...')
     parser = init_model()
     args = parser.parse_args()
+    if os.path.exists("D:"):
+        args.bert_model = r'E:\data\huggingface\bert-base-uncased'
+        # args.max_seq_length = 128
+        args.num_train_epochs = 2
+        args.labeled_ratio = 0.4
     data = Data(args)
 
     if args.pretrain:
@@ -266,9 +280,9 @@ if __name__ == '__main__':
         manager = ModelManager(args, data, manager_p.model)
     else:
         manager = ModelManager(args, data)
-    
+
     print('Training begin...')
-    manager.train(args,data)
+    manager.train(args, data)
     print('Training finished!')
 
     print('Evaluation begin...')
@@ -276,4 +290,3 @@ if __name__ == '__main__':
     print('Evaluation finished!')
 
     manager.save_results(args)
-    

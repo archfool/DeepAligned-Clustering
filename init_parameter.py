@@ -14,7 +14,7 @@ def init_model():
     parser.add_argument("--bert_model", default="uncased_L-12_H-768_A-12", type=str, help="The path for the pre-trained bert model.")
     
     parser.add_argument("--max_seq_length", default=None, type=int,
-                        help="The maximum total input sequence length after tokenization. Sequences longer "
+                            help="The maximum total input sequence length after tokenization. Sequences longer "
                              "than this will be truncated, sequences shorter will be padded.")
     
     parser.add_argument("--feat_dim", default=768, type=int, help="The feature dimension.")
