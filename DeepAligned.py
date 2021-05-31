@@ -290,9 +290,9 @@ if __name__ == '__main__':
     parser = init_model()
     args = parser.parse_args()
     if os.path.exists("D:"):
-        args.bert_model = r'E:\data\huggingface\bert-base-uncased'
+        # args.bert_model = r'E:\data\huggingface\bert-base-uncased'
         args.dataset = 'clinc'
-        # args.bert_model = r'E:\data\huggingface\unsup-simcse-bert-base-uncased'
+        args.bert_model = r'E:\data\huggingface\unsup-simcse-bert-base-uncased'
         # args.max_seq_length = 128
         args.num_train_epochs = 2
         args.labeled_ratio = 0.4

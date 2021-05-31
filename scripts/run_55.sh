@@ -6,7 +6,7 @@ single_nova.py submit \
     --logdir /data/nfs/ruanzhihao322/log \
     --entry /data/nfs/ruanzhihao322/src/DeepAligned-Clustering/DeepAligned.py \
     --framework torch \
-    --torch-version 1.3 \
+    --torch-version 1.5 \
     --gpu-per-work 1 \
     --pod-type 15,240 \
     --data_dir /data/nfs/ruanzhihao322/data/DeepAlignedClustering/ \

@@ -304,7 +304,7 @@ def main():
     extension = data_args.train_file.split(".")[-1]
     if extension == "txt":
         extension = "text"
-    if extension == "csv":
+    if extension == "csv" or extension == "tsv":
         datasets = load_dataset(extension, data_files=data_files, cache_dir="./data/", delimiter="\t" if "tsv" in data_args.train_file else ",")
     else:
         datasets = load_dataset(extension, data_files=data_files, cache_dir="./data/")
