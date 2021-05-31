@@ -31,7 +31,8 @@ class PretrainModelManager:
         total_labels = torch.empty(0, dtype=torch.long).to(self.device)
         total_logits = torch.empty((0, data.n_known_cls)).to(self.device)
 
-        for batch in tqdm(data.eval_dataloader, desc="Iteration"):
+        # for batch in tqdm(data.eval_dataloader, desc="Iteration"):
+        for batch in data.eval_dataloader:
             batch = tuple(t.to(self.device) for t in batch)
             input_ids, input_mask, segment_ids, label_ids = batch
             with torch.set_grad_enabled(False):
@@ -55,7 +56,8 @@ class PretrainModelManager:
             tr_loss = 0
             nb_tr_examples, nb_tr_steps = 0, 0
 
-            for step, batch in enumerate(tqdm(data.train_labeled_dataloader, desc="Iteration")):
+            # for step, batch in enumerate(tqdm(data.train_labeled_dataloader, desc="Iteration")):
+            for step, batch in enumerate(data.train_labeled_dataloader):
                 batch = tuple(t.to(self.device) for t in batch)
                 input_ids, input_mask, segment_ids, label_ids = batch
                 with torch.set_grad_enabled(True):
@@ -73,7 +75,7 @@ class PretrainModelManager:
             print('train_loss', loss)
 
             eval_score = self.eval(args, data)
-            print('eval_score', eval_score)
+            print('eval_acc_score', eval_score)
 
             if eval_score > self.best_eval_score:
                 best_model = copy.deepcopy(self.model)

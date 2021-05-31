@@ -69,7 +69,8 @@ class ModelManager:
         total_features = torch.empty((0, args.feat_dim)).to(self.device)
         total_labels = torch.empty(0, dtype=torch.long).to(self.device)
 
-        for batch in tqdm(dataloader, desc="Extracting representation"):
+        # for batch in tqdm(dataloader, desc="Extracting representation"):
+        for batch in dataloader:
             batch = tuple(t.to(self.device) for t in batch)
             input_ids, input_mask, segment_ids, label_ids = batch
             with torch.no_grad():
@@ -136,7 +137,7 @@ class ModelManager:
         y_pred = np.array([map_[idx] for idx in y_pred])
 
         cm = confusion_matrix(y_true, y_pred)
-        print('confusion matrix', cm)
+        print('confusion matrix\n', cm)
         self.test_results = results
 
         self.save_results(args)
@@ -185,10 +186,12 @@ class ModelManager:
         wait = 0
 
         for epoch in trange(int(args.num_train_epochs), desc="Epoch"):
-
+            print("{}\tEpoch:\t{}".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), epoch))
             feats, label_tmp = self.get_features_labels(data.train_semi_dataloader, self.model, args)
             feats = feats.cpu().numpy()
+            print("\n{}\tBegin KMeans".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
             km = KMeans(n_clusters=self.num_labels).fit(feats)
+            print("{}\tEnd KMeans".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
             score = metrics.silhouette_score(feats, km.labels_)
             print('score(the bigger the better)', score)
@@ -210,7 +213,8 @@ class ModelManager:
             nb_tr_examples, nb_tr_steps = 0, 0
             self.model.train()
 
-            for batch in tqdm(train_dataloader, desc="Pseudo-Training"):
+            # for batch in tqdm(train_dataloader, desc="Pseudo-Training"):
+            for batch in train_dataloader:
                 batch = tuple(t.to(self.device) for t in batch)
                 input_ids, input_mask, segment_ids, label_ids = batch
 
@@ -227,6 +231,10 @@ class ModelManager:
 
             tr_loss = tr_loss / nb_tr_steps
             print('train_loss', tr_loss)
+            if epoch % 10 == 0:
+                print("=============Begin in_batch Eval=============")
+                self.evaluation(args, data)
+                print("=============End in_batch Eval=============")
 
     def load_pretrained_model(self, args):
         pretrained_dict = self.pretrained_model.state_dict()
@@ -282,16 +290,17 @@ if __name__ == '__main__':
     parser = init_model()
     args = parser.parse_args()
     if os.path.exists("D:"):
-        # args.bert_model = r'E:\data\huggingface\bert-base-uncased'
-        args.bert_model = r'E:\data\huggingface\unsup-simcse-bert-base-uncased'
+        args.bert_model = r'E:\data\huggingface\bert-base-uncased'
+        args.dataset = 'clinc'
+        # args.bert_model = r'E:\data\huggingface\unsup-simcse-bert-base-uncased'
         # args.max_seq_length = 128
         args.num_train_epochs = 2
         args.labeled_ratio = 0.4
-    elif os.path.exists("/"):
+    elif os.path.exists("/media/archfool/"):
         args.bert_model = r'/media/archfool/data/data/huggingface/unsup-simcse-bert-base-uncased'
         # args.bert_model = r'/media/archfool/data/data/huggingface/bert-base-uncased'
-    else:
-        args.bert_model = 'undefined'
+    # else:
+    #     args.bert_model = 'undefined'
     data = Data(args)
 
     if args.pretrain:
