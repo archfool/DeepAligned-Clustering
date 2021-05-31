@@ -3,6 +3,7 @@ from init_parameter import *
 from dataloader import *
 from pretrain import *
 from util import *
+import time
 
 
 class ModelManager:
@@ -11,13 +12,20 @@ class ModelManager:
 
         # todo 加载模型
         if pretrained_model is None:
+            print("load model from a saved bin file.")
             pretrained_model = BertForModel.from_pretrained(args.bert_model, cache_dir="", num_labels=data.n_known_cls)
             if os.path.exists(args.pretrain_dir):
+                print("find args.pretrain_dir bin file, ignore args.bert_model bin file.")
                 pretrained_model = self.restore_model(args.pretrained_model)
+        else:
+            print("load model direct from previous train task.")
         self.pretrained_model = pretrained_model
 
         os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        # todo tmp add
+        self.pretrained_model.to(self.device)
 
         # todo 当cluster_num_factor<=1时，不会执行低质簇剔除的策略
         if args.cluster_num_factor > 1:
@@ -38,6 +46,7 @@ class ModelManager:
         if args.freeze_bert_parameters:
             self.freeze_parameters(self.model)
 
+        # todo tmp del
         self.model.to(self.device)
 
         num_train_examples = len(data.train_labeled_examples) + len(data.train_unlabeled_examples)
@@ -54,6 +63,8 @@ class ModelManager:
 
     def get_features_labels(self, dataloader, model, args):
 
+        # todo debug add change device
+        # model.to(self.device)
         model.eval()
         total_features = torch.empty((0, args.feat_dim)).to(self.device)
         total_labels = torch.empty(0, dtype=torch.long).to(self.device)
@@ -73,7 +84,9 @@ class ModelManager:
 
         feats, _ = self.get_features_labels(data.train_semi_dataloader, self.pretrained_model, args)
         feats = feats.cpu().numpy()
+        print("{}\tBegin KMeans".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
         km = KMeans(n_clusters=data.num_labels).fit(feats)
+        print("{}\tEnd KMeans".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
         y_pred = km.labels_
 
         pred_label_list = np.unique(y_pred)
@@ -173,12 +186,12 @@ class ModelManager:
 
         for epoch in trange(int(args.num_train_epochs), desc="Epoch"):
 
-            feats, _ = self.get_features_labels(data.train_semi_dataloader, self.model, args)
+            feats, label_tmp = self.get_features_labels(data.train_semi_dataloader, self.model, args)
             feats = feats.cpu().numpy()
             km = KMeans(n_clusters=self.num_labels).fit(feats)
 
             score = metrics.silhouette_score(feats, km.labels_)
-            print('score', score)
+            print('score(the bigger the better)', score)
 
             if score > best_score:
                 best_model = copy.deepcopy(self.model)
@@ -265,6 +278,7 @@ class ModelManager:
 if __name__ == '__main__':
 
     print('Data and Parameters Initialization...')
+    # todo load paras
     parser = init_model()
     args = parser.parse_args()
     if os.path.exists("D:"):
@@ -273,6 +287,11 @@ if __name__ == '__main__':
         # args.max_seq_length = 128
         args.num_train_epochs = 2
         args.labeled_ratio = 0.4
+    elif os.path.exists("/"):
+        args.bert_model = r'/media/archfool/data/data/huggingface/unsup-simcse-bert-base-uncased'
+        # args.bert_model = r'/media/archfool/data/data/huggingface/bert-base-uncased'
+    else:
+        args.bert_model = 'undefined'
     data = Data(args)
 
     if args.pretrain:

@@ -16,10 +16,10 @@ class Data:
 
         processor = DatasetProcessor()
         self.data_dir = os.path.join(args.data_dir, args.dataset)
+        # todo judge 3 kinds of labels
         self.all_label_list = processor.get_labels(self.data_dir)
         self.n_known_cls = round(len(self.all_label_list) * args.known_cls_ratio)
         self.known_label_list = list(np.random.choice(np.array(self.all_label_list), self.n_known_cls, replace=False))
-
         self.num_labels = int(len(self.all_label_list) * args.cluster_num_factor)
 
         self.train_labeled_examples, self.train_unlabeled_examples = self.get_examples(processor, args, 'train')
@@ -37,12 +37,15 @@ class Data:
         self.eval_dataloader = self.get_loader(self.eval_examples, args, 'eval')
         self.test_dataloader = self.get_loader(self.test_examples, args, 'test')
 
+    # todo load data and change into new format
     def get_examples(self, processor, args, mode='train'):
         ori_examples = processor.get_examples(self.data_dir, mode)
 
         if mode == 'train':
             train_labels = np.array([example.label for example in ori_examples])
             train_labeled_ids = []
+
+            # todo iter for every know_label, random choose a ratio of the corpus tobe labeled, and record their idx
             for label in self.known_label_list:
                 num = round(len(train_labels[train_labels == label]) * args.labeled_ratio)
                 pos = list(np.where(train_labels == label)[0])
@@ -69,6 +72,7 @@ class Data:
 
         return examples
 
+    # todo convert corpus to ids
     def get_semi(self, labeled_examples, unlabeled_examples, args):
 
         tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=True)
@@ -93,6 +97,7 @@ class Data:
         semi_label_ids = torch.cat([labeled_label_ids, unlabeled_label_ids])
         return semi_input_ids, semi_input_mask, semi_segment_ids, semi_label_ids
 
+    # todo push corpus into loader
     def get_semi_loader(self, semi_input_ids, semi_input_mask, semi_segment_ids, semi_label_ids, args):
         semi_data = TensorDataset(semi_input_ids, semi_input_mask, semi_segment_ids, semi_label_ids)
         semi_sampler = SequentialSampler(semi_data)
@@ -100,7 +105,9 @@ class Data:
 
         return semi_dataloader
 
+    # todo convert corpus to ids and push into loader
     def get_loader(self, examples, args, mode='train'):
+        # todo to replace?
         tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=True)
 
         if mode == 'train' or mode == 'eval':
@@ -173,6 +180,7 @@ class DataProcessor(object):
 
 class DatasetProcessor(DataProcessor):
 
+    # todo corpus should be saved into 3 files, and named by:train, dev, test
     def get_examples(self, data_dir, mode):
         if mode == 'train':
             return self._create_examples(
@@ -209,6 +217,7 @@ class DatasetProcessor(DataProcessor):
         return examples
 
 
+# todo havn't read
 def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer):
     """Loads a data file into a list of `InputBatch`s."""
     label_map = {}
