@@ -21,4 +21,9 @@ outputs/
 data/*
 pretrain_models/
 pretrain_models/*
+runs/
+runs/*
+venv/
+venv/*
+
 
