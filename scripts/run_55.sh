@@ -11,7 +11,7 @@ single_nova.py submit \
     --pod-type 15,240 \
     --data_dir /data/nfs/ruanzhihao322/data/DeepAlignedClustering/ \
     --save_results_path /data/nfs/ruanzhihao322/model/DeepAlignedClustering/${DATASET} \
-    --bert_model /data/nfs/ruanzhihao322/model/huggingface/${MODEL_NAME} \
+    --bert_model /data/nfs/ruanzhihao322/model/${MODEL_NAME} \
     --pretrain_dir /data/nfs/ruanzhihao322/model/DeepAlignedClustering/${DATASET} \
     --dataset ${DATASET} \
     --known_cls_ratio 0.75 \

@@ -2,7 +2,7 @@
 
     --model_name_or_path /media/archfool/data/data/huggingface/bert-base-uncased
     --train_file /media/archfool/data/data/datasets-for-clustering/clinc_unsup_CL.txt
-    --output_dir /media/archfool/data/data/huggingface/my-unsup-simcse-bert-base-uncased
+    --output_dir /media/archfool/data/data/my-unsup-simcse-bert-base-uncased
     --num_train_epochs 20
     --per_device_train_batch_size 64
     --learning_rate 3e-5
