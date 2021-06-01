@@ -22,18 +22,6 @@ def set_seed(seed):
     np.random.seed(seed)
     torch.manual_seed(seed)
 
-def generate_unsup_corpus():
-    dir_input = r'E:\data\datasets-for-clustering\clinc'
-    file_name_input = "train.tsv"
-    dir_output = r'E:\data\datasets-for-clustering'
-    file_name_output = "clinc_unsup_CL.txt"
-
-    df = pd.read_csv(os.path.join(dir_input, file_name_input), sep='\t')
-    corpus = df['text'].to_list()
-    with open(os.path.join(dir_output, file_name_output), 'w', encoding='utf-8') as f:
-        f.write('\n'.join(corpus))
-
-
 def get_examples(processor, args, data_dir, known_label_list):
     ori_examples = processor.get_examples(data_dir, "train")
 
@@ -55,8 +43,20 @@ def get_examples(processor, args, data_dir, known_label_list):
 
     return train_labeled_examples, train_unlabeled_examples
 
-if __name__ == "__main__":
 
+def generate_unsup_corpus():
+    dir_input = r'E:\data\datasets-for-clustering\clinc'
+    file_name_input = "train.tsv"
+    dir_output = r'E:\data\datasets-for-clustering'
+    file_name_output = "clinc_unsup_CL.txt"
+
+    df = pd.read_csv(os.path.join(dir_input, file_name_input), sep='\t')
+    corpus = df['text'].to_list()
+    with open(os.path.join(dir_output, file_name_output), 'w', encoding='utf-8') as f:
+        f.write('\n'.join(corpus))
+
+
+def generate_sup_corpus():
     parser = argparse.ArgumentParser()
     parser.add_argument('--seed', type=int, default=0, help="Random seed for initialization.")
     parser.add_argument("--dataset", default=None, type=str,
@@ -115,6 +115,9 @@ if __name__ == "__main__":
     with open(os.path.join(dir_output, file_name_output), 'w', encoding='utf-8') as f:
         f.write('\n'.join(corpus))
 
-    # generate_unsup_corpus()
+
+if __name__ == "__main__":
+    generate_sup_corpus()
+    generate_unsup_corpus()
 
     print("END")
