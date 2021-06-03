@@ -5,7 +5,7 @@ class BertForModel(BertPreTrainedModel):
     def __init__(self, config, num_labels):
         super(BertForModel, self).__init__(config)
         self.num_labels = num_labels
-        # todo 加载模型，随机初始化参数
+        # todo 加载模型，模型参数是随机初始化的
         self.bert = BertModel(config)
         self.dense = nn.Linear(config.hidden_size, config.hidden_size)
         self.activation = nn.Tanh()

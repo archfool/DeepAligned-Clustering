@@ -248,6 +248,7 @@ def main():
     # or by passing the --help flag to this script.
     # We now keep distinct sets of args, for a cleaner separation of concerns.
 
+    # todo step_1 读取参数
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, OurTrainingArguments))
     if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
         # If we pass only one argument to the script and it's the path to a json file,
@@ -298,6 +299,7 @@ def main():
     #
     # In distributed training, the load_dataset function guarantee that only one local process can concurrently
     # download the dataset.
+    # todo step_2 读取数据
     data_files = {}
     if data_args.train_file is not None:
         data_files["train"] = data_args.train_file
@@ -330,6 +332,7 @@ def main():
         config = CONFIG_MAPPING[model_args.model_type]()
         logger.warning("You are instantiating a new config instance from scratch.")
 
+    # todo step_3 加载tonkenizer
     tokenizer_kwargs = {
         "cache_dir": model_args.cache_dir,
         "use_fast": model_args.use_fast_tokenizer,
@@ -346,7 +349,7 @@ def main():
             "You can do it from another script, save it, and load it from here, using --tokenizer_name."
         )
 
-    # 加载模型
+    # todo step_4 加载模型
     if model_args.model_name_or_path:
         if 'roberta' in model_args.model_name_or_path:
             model = RobertaForCL.from_pretrained(
@@ -380,6 +383,7 @@ def main():
 
     model.resize_token_embeddings(len(tokenizer))
 
+    # todo step_5 生成输入数据
     # Prepare features
     column_names = datasets["train"].column_names
     sent2_cname = None
@@ -530,7 +534,7 @@ def main():
 
     data_collator = default_data_collator if data_args.pad_to_max_length else OurDataCollatorWithPadding(tokenizer)
 
-    # 加载训练模块
+    # todo step_7 初始化trainer
     trainer = CLTrainer(
         model=model,
         args=training_args,
@@ -540,6 +544,7 @@ def main():
     )
     trainer.model_args = model_args
 
+    # todo step_8 训练
     # Training
     if training_args.do_train:
         model_path = (
@@ -561,6 +566,7 @@ def main():
             # Need to save the state, since Trainer.save_model saves only the tokenizer with the model
             trainer.state.save_to_json(os.path.join(training_args.output_dir, "trainer_state.json"))
 
+    # todo step_9 评估
     # Evaluation
     results = {}
     if training_args.do_eval:

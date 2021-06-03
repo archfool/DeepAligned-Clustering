@@ -382,6 +382,7 @@ class CLTrainer(Trainer):
         epochs_trained = 0
         steps_trained_in_current_epoch = 0
 
+        # todo 后续有空验证下这段代码
         # Check if continuing training from a checkpoint
         if model_path and os.path.isfile(os.path.join(model_path, "trainer_state.json")):
             self.state = TrainerState.load_from_json(os.path.join(model_path, "trainer_state.json"))

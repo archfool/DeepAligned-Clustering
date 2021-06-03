@@ -143,7 +143,7 @@ def demo():
 def demo_simcse():
     path_model_simcse_sup = r'E:\data\huggingface\sup-simcse-bert-base-uncased'
     path_model_simcse_unsup = r'E:\data\huggingface\unsup-simcse-bert-base-uncased'
-    if False:
+    if True:
         model = AutoModel.from_pretrained(path_model_simcse_unsup)
         tokenizer = AutoTokenizer.from_pretrained(path_model_simcse_unsup)
 

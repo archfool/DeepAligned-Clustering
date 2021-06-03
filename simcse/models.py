@@ -190,14 +190,14 @@ def cl_forward(cls,
         z1 = torch.cat(z1_list, 0)
         z2 = torch.cat(z2_list, 0)
 
-    # 构建正负例
+    # 同一个batch的N对sent_A和sent_B两两配对，构建N*N个样本
     cos_sim = cls.sim(z1.unsqueeze(1), z2.unsqueeze(0))
     # Hard negative
     if num_sent >= 3:
         z1_z3_cos = cls.sim(z1.unsqueeze(1), z3.unsqueeze(0))
         cos_sim = torch.cat([cos_sim, z1_z3_cos], 1)
 
-    # 构建标签
+    # 构建N*N个样本的标签
     labels = torch.arange(cos_sim.size(0)).long().to(cls.device)
     loss_fct = nn.CrossEntropyLoss()
 
@@ -301,6 +301,7 @@ class BertForCL(BertPreTrainedModel):
         mlm_input_ids=None,
         mlm_labels=None,
     ):
+        # todo sent_emb在infer时取值为true，在train时取值为false
         if sent_emb:
             return sentemb_forward(self, self.bert,
                 input_ids=input_ids,

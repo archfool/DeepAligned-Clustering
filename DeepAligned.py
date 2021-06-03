@@ -187,7 +187,7 @@ class ModelManager:
 
         for epoch in trange(int(args.num_train_epochs), desc="Epoch"):
             print("{}\tEpoch:\t{}".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), epoch))
-            feats, label_tmp = self.get_features_labels(data.train_semi_dataloader, self.model, args)
+            feats, _ = self.get_features_labels(data.train_semi_dataloader, self.model, args)
             feats = feats.cpu().numpy()
             print("\n{}\tBegin KMeans".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
             km = KMeans(n_clusters=self.num_labels).fit(feats)
@@ -196,6 +196,7 @@ class ModelManager:
             score = metrics.silhouette_score(feats, km.labels_)
             print('score(the bigger the better)', score)
 
+            # todo 判定early_stop
             if score > best_score:
                 best_model = copy.deepcopy(self.model)
                 wait = 0
@@ -206,6 +207,7 @@ class ModelManager:
                     self.model = best_model
                     break
 
+            # todo 生成伪标签，更新旧标签为新伪标签
             pseudo_labels = self.alignment(km, args)
             train_dataloader = self.update_pseudo_labels(pseudo_labels, args, data)
 
@@ -231,7 +233,7 @@ class ModelManager:
 
             tr_loss = tr_loss / nb_tr_steps
             print('train_loss', tr_loss)
-            if epoch % 10 == 0:
+            if epoch % 100 == 0:
                 print("=============Begin in_batch Eval=============")
                 self.evaluation(args, data)
                 print("=============End in_batch Eval=============")
