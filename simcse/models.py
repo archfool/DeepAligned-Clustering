@@ -284,7 +284,14 @@ class BertForCL(BertPreTrainedModel):
         if self.model_args.do_mlm:
             self.lm_head = BertLMPredictionHead(config)
 
-        cl_init(self, config)
+        if False:
+            cl_init(self, config)
+        else:
+            self.pooler_type = self.model_args.pooler_type
+            self.pooler = Pooler(self.model_args.pooler_type)
+            self.mlp = MLPLayer(config)
+            self.sim = Similarity(temp=self.model_args.temp)
+            self.init_weights()
 
     def forward(self,
         input_ids=None,
@@ -344,7 +351,14 @@ class RobertaForCL(RobertaPreTrainedModel):
         if self.model_args.do_mlm:
             self.lm_head = RobertaLMHead(config)
 
-        cl_init(self, config)
+        if False:
+            cl_init(self, config)
+        else:
+            self.pooler_type = self.model_args.pooler_type
+            self.pooler = Pooler(self.model_args.pooler_type)
+            self.mlp = MLPLayer(config)
+            self.sim = Similarity(temp=self.model_args.temp)
+            self.init_weights()
 
     def forward(self,
         input_ids=None,

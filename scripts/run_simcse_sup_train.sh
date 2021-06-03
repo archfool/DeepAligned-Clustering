@@ -31,6 +31,7 @@
     --pooler_type cls
     --overwrite_output_dir
     --temp 0.05
+    --seed 1234
     --do_train
     --do_eval
 

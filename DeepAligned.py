@@ -4,7 +4,19 @@ from dataloader import *
 from pretrain import *
 from util import *
 import time
+import transformers
+import simcse_train
+import CL_fit_DAC
+import pretrain_manage_dac_cl
+import logging
+from transformers.tokenization_utils_base import BatchEncoding, PaddingStrategy, PreTrainedTokenizerBase
+from transformers.trainer_utils import is_main_process
+from transformers.data.data_collator import DataCollatorForLanguageModeling
+from transformers.file_utils import cached_property, torch_required, is_torch_available, is_torch_tpu_available
+from simcse.models import RobertaForCL, BertForCL
+from simcse.trainers import CLTrainer
 
+logger = logging.getLogger(__name__)
 
 class ModelManager:
 
@@ -288,28 +300,114 @@ class ModelManager:
 if __name__ == '__main__':
 
     print('Data and Parameters Initialization...')
-    # todo load paras
-    parser = init_model()
-    args = parser.parse_args()
+    # todo step_1 读取参数
+    # parser = init_model()
+    # args = parser.parse_args()
+    # if args.use_CL:
+    parser = transformers.HfArgumentParser(
+        (CL_fit_DAC.DacArguments,
+         simcse_train.ModelArguments,
+         simcse_train.DataTrainingArguments,
+         simcse_train.OurTrainingArguments)
+        , allow_abbrev=False)
+    if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
+        # If we pass only one argument to the script and it's the path to a json file,
+        # let's parse it to get our arguments.
+        args, model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
+    else:
+        args, model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+
     if os.path.exists("D:"):
         # args.bert_model = r'E:\data\huggingface\bert-base-uncased'
         # args.bert_model = r'E:\data\huggingface\unsup-simcse-bert-base-uncased'
         args.bert_model = r'E:\data\my-unsup-simcse-bert-base-uncased'
         args.dataset = 'clinc'
         # args.max_seq_length = 128
-        args.num_train_epochs = 2
+        args.num_train_epochs_dac = 2
         args.labeled_ratio = 0.4
-        args.seed = 1234
+        args.seed_dac = 1234
     elif os.path.exists("/media/archfool/"):
         args.bert_model = r'/media/archfool/data/data/huggingface/unsup-simcse-bert-base-uncased'
         # args.bert_model = r'/media/archfool/data/data/huggingface/bert-base-uncased'
     # else:
     #     args.bert_model = 'undefined'
+
+    if args.use_CL:
+        if (
+            os.path.exists(training_args.output_dir)
+            and os.listdir(training_args.output_dir)
+            and training_args.do_train
+            and not training_args.overwrite_output_dir
+        ):
+            raise ValueError(
+                f"Output directory ({training_args.output_dir}) already exists and is not empty."
+                "Use --overwrite_output_dir to overcome."
+            )
+
+        # Setup logging
+        logging.basicConfig(
+            format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
+            datefmt="%m/%d/%Y %H:%M:%S",
+            level=logging.INFO if is_main_process(training_args.local_rank) else logging.WARN,
+        )
+
+        # Log on each process the small summary:
+        logger.warning(
+            f"Process rank: {training_args.local_rank}, device: {training_args.device}, n_gpu: {training_args.n_gpu}"
+            + f" distributed training: {bool(training_args.local_rank != -1)}, 16-bits training: {training_args.fp16}"
+        )
+        # Set the verbosity to info of the Transformers logger (on main process only):
+        if is_main_process(training_args.local_rank):
+            transformers.utils.logging.set_verbosity_info()
+            transformers.utils.logging.enable_default_handler()
+            transformers.utils.logging.enable_explicit_format()
+        logger.info("Training/evaluation parameters %s", training_args)
+
+        # Set seed before initializing model.
+        set_seed(training_args.seed)
+
+    # todo step_2 读取数据
     data = Data(args)
 
+    # todo step_4 加载模型
     if args.pretrain:
         print('Pre-training begin...')
-        manager_p = PretrainModelManager(args, data)
+        if args.use_CL:
+            manager_p = pretrain_manage_dac_cl.PretrainModelManagerCL(args, data)
+            if model_args.model_name_or_path:
+                if 'roberta' in model_args.model_name_or_path:
+                    model = RobertaForCL.from_pretrained(
+                        model_args.model_name_or_path,
+                        from_tf=bool(".ckpt" in model_args.model_name_or_path),
+                        config=config,
+                        cache_dir=model_args.cache_dir,
+                        revision=model_args.model_revision,
+                        use_auth_token=True if model_args.use_auth_token else None,
+                        model_args=model_args
+                    )
+                elif 'bert' in model_args.model_name_or_path:
+                    model = BertForCL.from_pretrained(
+                        model_args.model_name_or_path,
+                        from_tf=bool(".ckpt" in model_args.model_name_or_path),
+                        config=config,
+                        cache_dir=model_args.cache_dir,
+                        revision=model_args.model_revision,
+                        use_auth_token=True if model_args.use_auth_token else None,
+                        model_args=model_args
+                    )
+                    if model_args.do_mlm:
+                        pretrained_model = BertForPreTraining.from_pretrained(model_args.model_name_or_path)
+                        model.lm_head.load_state_dict(pretrained_model.cls.predictions.state_dict())
+                else:
+                    raise NotImplementedError
+            else:
+                raise NotImplementedError
+                logger.info("Training new model from scratch")
+                model = AutoModelForMaskedLM.from_config(config)
+
+            model.resize_token_embeddings(len(tokenizer))
+        else:
+            manager_p = PretrainModelManager(args, data)
         manager_p.train(args, data)
         print('Pre-training finished!')
         manager = ModelManager(args, data, manager_p.model)
