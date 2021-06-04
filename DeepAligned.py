@@ -18,6 +18,7 @@ from simcse.trainers import CLTrainer
 
 logger = logging.getLogger(__name__)
 
+
 class ModelManager:
 
     def __init__(self, args, data, pretrained_model=None):
@@ -300,22 +301,27 @@ class ModelManager:
 if __name__ == '__main__':
 
     print('Data and Parameters Initialization...')
-    # todo step_1 读取参数
-    # parser = init_model()
+    env_paras = {
+        'DATASET': 'clinc',
+        'MODEL_NAME': 'bert-base-uncased',
+    }
+    # todo step_1 读取配置参数
+    parser = init_model()
+    args, unknown = parser.parse_known_args()
     # args = parser.parse_args()
-    # if args.use_CL:
-    parser = transformers.HfArgumentParser(
-        (CL_fit_DAC.DacArguments,
-         simcse_train.ModelArguments,
-         simcse_train.DataTrainingArguments,
-         simcse_train.OurTrainingArguments)
-        , allow_abbrev=False)
-    if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
-        # If we pass only one argument to the script and it's the path to a json file,
-        # let's parse it to get our arguments.
-        args, model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
-    else:
-        args, model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+    if args.use_CL:
+        parser_CL = transformers.HfArgumentParser(
+            (simcse_train.ModelArguments,
+             simcse_train.DataTrainingArguments,
+             simcse_train.OurTrainingArguments)
+            , allow_abbrev=False)
+        if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
+            # If we pass only one argument to the script and it's the path to a json file,
+            # let's parse it to get our arguments.
+            model_args, data_args, training_args = parser_CL.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
+        else:
+            model_args, data_args, training_args, remaining_args = parser_CL.parse_args_into_dataclasses(
+                return_remaining_strings=True)
 
     if os.path.exists("D:"):
         # args.bert_model = r'E:\data\huggingface\bert-base-uncased'
@@ -334,10 +340,10 @@ if __name__ == '__main__':
 
     if args.use_CL:
         if (
-            os.path.exists(training_args.output_dir)
-            and os.listdir(training_args.output_dir)
-            and training_args.do_train
-            and not training_args.overwrite_output_dir
+                os.path.exists(training_args.output_dir)
+                and os.listdir(training_args.output_dir)
+                and training_args.do_train
+                and not training_args.overwrite_output_dir
         ):
             raise ValueError(
                 f"Output directory ({training_args.output_dir}) already exists and is not empty."

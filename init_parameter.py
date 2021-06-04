@@ -68,6 +68,6 @@ def init_model():
     parser.add_argument("--lr", default=5e-5, type=float,
                         help="The learning rate for training.")
 
-    # parser.add_argument("--use_CL", action="store_true", help="use Contrastive Learning.")
+    parser.add_argument("--use_CL", action="store_true", help="use Contrastive Learning.")
 
     return parser
