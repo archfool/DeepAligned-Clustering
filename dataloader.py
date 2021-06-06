@@ -16,7 +16,7 @@ class Data:
 
         processor = DatasetProcessor()
         self.data_dir = os.path.join(args.data_dir, args.dataset)
-        # todo judge 3 kinds of labels
+        # todo get all_label_list, generate known_label_list(n_known_cls), cal num_labels.
         self.all_label_list = processor.get_labels(self.data_dir)
         self.n_known_cls = round(len(self.all_label_list) * args.known_cls_ratio)
         self.known_label_list = list(np.random.choice(np.array(self.all_label_list), self.n_known_cls, replace=False))
@@ -129,6 +129,31 @@ class Data:
             dataloader = DataLoader(data, sampler=sampler, batch_size=args.eval_batch_size)
 
         return dataloader
+
+
+    def prepare_cl_corpus(self, save_corpus_path):
+        known_label_list = self.known_label_list
+        train_labeled_examples = self.train_labeled_examples
+        corpus = []
+        for label in known_label_list:
+            example_set = []
+            for example in train_labeled_examples:
+                if example.label == label:
+                    example_set.append(example.text_a)
+
+            if len(example_set) <= 1:
+                continue
+
+            for text_a in example_set:
+                for text_b in example_set:
+                    if text_a != text_b:
+                        corpus.append(text_a + '\t' + text_b)
+
+        random.shuffle(corpus)
+        corpus = ["sent0\tsent1"] + corpus
+
+        with open(save_corpus_path, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(corpus))
 
 
 class InputExample(object):

@@ -1,6 +1,6 @@
 #!/usr/bin bash
 
-    --model_name_or_path /media/archfool/data/data/my-unsup-simcse-bert-base-uncased
+    --model_name_or_path /media/archfool/data/data/huggingface/bert-base-uncased
     --train_file /media/archfool/data/data/datasets-for-clustering/clinc_sup_CL.tsv.csv
     --output_dir /media/archfool/data/data/my-sup-simcse-bert-base-uncased
     --num_train_epochs 20

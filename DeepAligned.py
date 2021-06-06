@@ -43,7 +43,7 @@ class ModelManager:
         # todo 当cluster_num_factor<=1时，不会执行低质簇剔除的策略
         if args.cluster_num_factor > 1:
             # todo 进行聚类，剔除低密度的簇，统计符合条件的簇的个数
-            # todo 只会在训练deepcluster之前进行一次簇个数的估计
+            # todo 只会在训练DAC之前进行一次簇个数的估计
             self.num_labels = self.predict_k(args, data)
         else:
             self.num_labels = data.num_labels
@@ -246,7 +246,7 @@ class ModelManager:
 
             tr_loss = tr_loss / nb_tr_steps
             print('train_loss', tr_loss)
-            if epoch % 100 == 0:
+            if epoch % 10 == 0:
                 print("=============Begin in_batch Eval=============")
                 self.evaluation(args, data)
                 print("=============End in_batch Eval=============")
@@ -298,14 +298,29 @@ class ModelManager:
         print('test_results', data_diagram)
 
 
+# 非命令行运行方式下的环境变量替换
+def replace_env_paras(env_paras, args_list):
+    for args in args_list:
+        for key in args.__dict__.keys():
+            if isinstance(args.__getattribute__(key), str):
+                for k, v in env_paras.items():
+                    args.__setattr__(key, str.replace(args.__getattribute__(key), u"${" + k + u"}", v))
+            print(key, args.__getattribute__(key))
+    if len(args_list) == 1:
+        return args_list[0]
+    else:
+        return tuple(args_list)
+
+
 if __name__ == '__main__':
 
     print('Data and Parameters Initialization...')
+
+    # todo step_1 读取配置参数
     env_paras = {
         'DATASET': 'clinc',
         'MODEL_NAME': 'bert-base-uncased',
     }
-    # todo step_1 读取配置参数
     parser = init_model()
     # args = parser.parse_args()
     args, unknown = parser.parse_known_args()
@@ -318,101 +333,140 @@ if __name__ == '__main__':
         args.labeled_ratio = 0.4
         args.num_pretrain_epochs = 2
         args.num_train_epochs = 2
-    elif os.path.exists("/media/archfool/"):
-        args.bert_model = r'/media/archfool/data/data/huggingface/unsup-simcse-bert-base-uncased'
-        # args.bert_model = r'/media/archfool/data/data/huggingface/bert-base-uncased'
-
-    # 非命令行运行方式下的环境变量替换
-    for key in args.__dict__.keys():
-        if isinstance(args.__getattribute__(key), str):
-            for k, v in env_paras.items():
-                args.__setattr__(key, str.replace(args.__getattribute__(key), u"${"+k+u"}", v))
-        print(key, args.__getattribute__(key))
+    # elif os.path.exists("/media/archfool/"):
+    #     args.bert_model = r'/media/archfool/data/data/huggingface/unsup-simcse-bert-base-uncased'
+    # args.bert_model = r'/media/archfool/data/data/huggingface/bert-base-uncased'
+    args = replace_env_paras(env_paras, [args])
 
     if args.use_CL:
         data_args, training_args, model_args = simcse_train.load_paras()
-        # parser_CL = transformers.HfArgumentParser(
-        #     (simcse_train.ModelArguments,
-        #      simcse_train.DataTrainingArguments,
-        #      simcse_train.OurTrainingArguments)
-        #     , allow_abbrev=False)
-        # if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
-        #     # If we pass only one argument to the script and it's the path to a json file,
-        #     # let's parse it to get our arguments.
-        #     model_args, data_args, training_args = parser_CL.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
-        # else:
-        #     model_args, data_args, training_args, remaining_args = parser_CL.parse_args_into_dataclasses(
-        #         return_remaining_strings=True)
+        data_args, training_args, model_args = replace_env_paras(env_paras, [data_args, training_args, model_args])
 
         # Set logging before initializing model.
         simcse_train.set_log(data_args, training_args, model_args, logging)
         # Set seed before initializing model.
         set_seed(training_args.seed)
 
-        # 非命令行运行方式下的环境变量替换
-        for args_tmp in [model_args, data_args, training_args]:
-            for key in args_tmp.__dict__.keys():
-                if isinstance(args_tmp.__getattribute__(key), str):
-                    for k, v in env_paras.items():
-                        args_tmp.__setattr__(key, str.replace(args_tmp.__getattribute__(key), u"${" + k + u"}", v))
-                print(key, args_tmp.__getattribute__(key))
+        # todo step_2 加载模型和分词器
+        model, tokenizer = simcse_train.load_model(data_args, training_args, model_args)
 
-    # todo step_2 读取数据
-    data = Data(args)
+        # todo step_3 准备数据
+        data = Data(args)
+        data.prepare_cl_corpus(data_args.train_file)
+        data_collator, train_dataset = simcse_train.data_prepare(data_args, training_args, model_args, tokenizer)
 
-    # todo step_4 加载模型
-    if args.pretrain:
-        print('Pre-training begin...')
-        # if args.use_CL:
-        #     manager_p = pretrain_manage_dac_cl.PretrainModelManagerCL(args, data)
-        #     if model_args.model_name_or_path:
-        #         if 'roberta' in model_args.model_name_or_path:
-        #             model = RobertaForCL.from_pretrained(
-        #                 model_args.model_name_or_path,
-        #                 from_tf=bool(".ckpt" in model_args.model_name_or_path),
-        #                 config=config,
-        #                 cache_dir=model_args.cache_dir,
-        #                 revision=model_args.model_revision,
-        #                 use_auth_token=True if model_args.use_auth_token else None,
-        #                 model_args=model_args
-        #             )
-        #         elif 'bert' in model_args.model_name_or_path:
-        #             model = BertForCL.from_pretrained(
-        #                 model_args.model_name_or_path,
-        #                 from_tf=bool(".ckpt" in model_args.model_name_or_path),
-        #                 config=config,
-        #                 cache_dir=model_args.cache_dir,
-        #                 revision=model_args.model_revision,
-        #                 use_auth_token=True if model_args.use_auth_token else None,
-        #                 model_args=model_args
-        #             )
-        #             if model_args.do_mlm:
-        #                 pretrained_model = BertForPreTraining.from_pretrained(model_args.model_name_or_path)
-        #                 model.lm_head.load_state_dict(pretrained_model.cls.predictions.state_dict())
-        #         else:
-        #             raise NotImplementedError
-        #     else:
-        #         raise NotImplementedError
-        #         logger.info("Training new model from scratch")
-        #         model = AutoModelForMaskedLM.from_config(config)
-        #
-        #     model.resize_token_embeddings(len(tokenizer))
-        # else:
-        manager_p = PretrainModelManager(args, data)
-        manager_p.train(args, data)
-        print('Pre-training finished!')
-        manager = ModelManager(args, data, manager_p.model)
+        # todo step_4 pre_train
+        training_args.do_train = True
+        if args.pretrain:
+            training_args.num_train_epochs = args.num_pretrain_epochs
+            trainer = CLTrainer(
+                model=model,
+                args=training_args,
+                train_dataset=train_dataset if training_args.do_train else None,
+                tokenizer=tokenizer,
+                data_collator=data_collator,
+            )
+            trainer.model_args = model_args
+
+            # todo model pre_train
+            train_result = trainer.train(model_path=model_args.model_name_or_path)
+            model = trainer.model
+            trainer.save_model()  # Saves the tokenizer too for easy upload
+            # todo 进行聚类，剔除低密度的簇，统计符合条件的簇的个数
+            # todo 只会在训练DAC之前进行一次簇个数的估计
+            # todo 进行聚类，剔除低密度的簇，统计符合条件的簇的个数
+            # todo 只会在训练DAC之前进行一次簇个数的估计
+            # todo 进行聚类，剔除低密度的簇，统计符合条件的簇的个数
+            # todo 只会在训练DAC之前进行一次簇个数的估计
+
+        # todo 冻结除了12层和pooler层之外的所有参数
+        # todo 冻结除了12层和pooler层之外的所有参数
+        # todo 冻结除了12层和pooler层之外的所有参数
+
+        "======================================================================================================"
+        best_score = 0
+        best_model = None
+        wait = 0
+
+        for epoch in trange(int(args.num_train_epochs), desc="Epoch"):
+            print("{}\tEpoch:\t{}".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), epoch))
+            feats, _ = self.get_features_labels(data.train_semi_dataloader, self.model, args)
+            feats = feats.cpu().numpy()
+            print("\n{}\tBegin KMeans".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+            km = KMeans(n_clusters=self.num_labels).fit(feats)
+            print("{}\tEnd KMeans".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+
+            score = metrics.silhouette_score(feats, km.labels_)
+            print('score(the bigger the better)', score)
+
+            # todo 判定early_stop
+            if score > best_score:
+                best_model = copy.deepcopy(self.model)
+                wait = 0
+                best_score = score
+            else:
+                wait += 1
+                if wait >= args.wait_patient:
+                    self.model = best_model
+                    break
+
+            # todo 生成伪标签，更新旧标签为新伪标签
+            pseudo_labels = self.alignment(km, args)
+            train_dataloader = self.update_pseudo_labels(pseudo_labels, args, data)
+
+            "===============train======================="
+            # tr_loss = 0
+            # nb_tr_examples, nb_tr_steps = 0, 0
+            # self.model.train()
+            #
+            # # for batch in tqdm(train_dataloader, desc="Pseudo-Training"):
+            # for batch in train_dataloader:
+            #     batch = tuple(t.to(self.device) for t in batch)
+            #     input_ids, input_mask, segment_ids, label_ids = batch
+            #
+            #     loss = self.model(input_ids, segment_ids, input_mask, label_ids, mode='train')
+            #
+            #     loss.backward()
+            #
+            #     tr_loss += loss.item()
+            #     nb_tr_examples += input_ids.size(0)
+            #     nb_tr_steps += 1
+            #
+            #     self.optimizer.step()
+            #     self.optimizer.zero_grad()
+            #
+            # tr_loss = tr_loss / nb_tr_steps
+            # print('train_loss', tr_loss)
+
+
+            if epoch % args.eval_epochs == 0:
+                print("=============Begin in_batch Eval=============")
+                self.evaluation(args, data)
+                print("=============End in_batch Eval=============")
+        "======================================================================================================"
+
     else:
-        manager = ModelManager(args, data)
+        # todo step_2 读取数据
+        data = Data(args)
 
-    print('Training begin...')
-    manager.train(args, data)
-    print('Training finished!')
+        # todo step_4 加载模型Manager
+        if args.pretrain:
+            print('Pre-training begin...')
+            manager_p = PretrainModelManager(args, data)
+            manager_p.train(args, data)
+            print('Pre-training finished!')
+            manager = ModelManager(args, data, manager_p.model)
+        else:
+            manager = ModelManager(args, data)
 
-    print('Evaluation begin...')
-    manager.evaluation(args, data)
-    print('Evaluation finished!')
+        print('Training begin...')
+        manager.train(args, data)
+        print('Training finished!')
 
-    manager.save_results(args)
+        print('Evaluation begin...')
+        manager.evaluation(args, data)
+        print('Evaluation finished!')
+
+        manager.save_results(args)
 
     print("===END===")

@@ -46,9 +46,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     # args.path = r"E:\data\my-unsup-simcse-bert-base-uncased"
     # args.path = r"E:\data\huggingface\bert-base-uncased"
-    args.path = r"E:\data\huggingface\sup-simcse-bert-base-uncased"
+    # args.path = r"E:\data\huggingface\sup-simcse-bert-base-uncased"
     # args.path = r"E:\data\huggingface\roberta-large"
-
+    args.path = "/media/archfool/data/data/huggingface/bert-base-uncased"
     print("SimCSE checkpoint -> Huggingface checkpoint for {}".format(args.path))
 
     state_dict = torch.load(os.path.join(args.path, "pytorch_model.bin"), map_location=torch.device("cpu"))

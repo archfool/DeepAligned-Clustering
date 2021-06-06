@@ -1,5 +1,19 @@
 #!/usr/bin bash
 
+    --data_dir /media/archfool/data/data/datasets-for-clustering
+    --save_results_path /media/archfool/data/data/my-sup-simcse-bert-base-uncased/${DATASET}
+    --bert_model /media/archfool/data/data/huggingface/${MODEL_NAME}
+    --pretrain_dir /media/archfool/data/data/my-sup-simcse-bert-base-uncased/${DATASET}
+    --dataset ${DATASET}
+    --known_cls_ratio 0.75
+    --cluster_num_factor 1.0
+    --labeled_ratio 0.1
+    --num_pretrain_epochs 50
+    --num_train_epochs 50
+    --seed 1234
+    --freeze_bert_parameters
+    --pretrain
+    --save_model
 
 
     --data_dir /data/nfs/ruanzhihao322/data/DeepAlignedClustering/ \
