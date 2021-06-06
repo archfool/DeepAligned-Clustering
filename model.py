@@ -21,6 +21,7 @@ class BertForModel(BertPreTrainedModel):
         pooled_output = self.dense(encoded_layer_12.mean(dim=1))
         pooled_output = self.activation(pooled_output)
         pooled_output = self.dropout(pooled_output)
+        # todo embd representation后只接了一层
         logits = self.classifier(pooled_output)
 
         if feature_ext:

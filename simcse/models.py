@@ -159,6 +159,7 @@ def cl_forward(cls,
     if cls.pooler_type == "cls":
         pooler_output = cls.mlp(pooler_output)
 
+    # todo embd representation后接了0层（不考虑MLM loss的情况下）
     # Separate representation
     z1, z2 = pooler_output[:,0], pooler_output[:,1]
 

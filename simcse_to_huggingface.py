@@ -44,9 +44,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--path", type=str, help="Path of SimCSE checkpoint folder")
     args = parser.parse_args()
-    args.path = r"E:\data\my-unsup-simcse-bert-base-uncased"
+    # args.path = r"E:\data\my-unsup-simcse-bert-base-uncased"
     # args.path = r"E:\data\huggingface\bert-base-uncased"
-    # args.path = r"E:\data\huggingface\unsup-simcse-bert-base-uncased"
+    args.path = r"E:\data\huggingface\sup-simcse-bert-base-uncased"
     # args.path = r"E:\data\huggingface\roberta-large"
 
     print("SimCSE checkpoint -> Huggingface checkpoint for {}".format(args.path))
