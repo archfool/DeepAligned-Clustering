@@ -149,18 +149,18 @@ class CLTrainer(Trainer):
         self.model.eval()
 
         # total_features = torch.empty((0, args.feat_dim)).cpu()
-        total_features = torch.empty((0, args.feat_dim)).cpu()
+        total_features = torch.empty((0, 768)).cpu()
 
         for batch in dataloader:
             # todo judge device at initial
-            batch = tuple(t.to(self.device) for t in batch)
+            batch = tuple(t.to(torch.device("cuda" if torch.cuda.is_available() else "cpu")) for t in batch)
             input_ids, input_mask, segment_ids, label_ids = batch
             with torch.no_grad():
                 # feature = model(input_ids, segment_ids, input_mask, feature_ext=True)
                 outputs = self.model(
                     input_ids=input_ids,
-                    attention_mask=None,
-                    token_type_ids=None,
+                    attention_mask=input_mask,
+                    token_type_ids=segment_ids,
                     position_ids=None,
                     head_mask=None,
                     inputs_embeds=None,

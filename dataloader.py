@@ -154,18 +154,18 @@ class Data:
         with open(ouput_corpus_path, 'w', encoding='utf-8') as f:
             f.write('\n'.join(corpus))
 
-    def corpus_dac2cl_eval(self, ouput_corpus_path, test_or_eval="eval"):
-        if "eval" == test_or_eval:
-            examples = self.eval_examples
-        elif "test" == test_or_eval:
-            examples = self.test_examples
-        else:
-            example = None
-            print("Input Para test_or_eval ERROR!")
-
-        example_set = [example.text_a for example in examples]
-
-        return example_set
+    # def corpus_dac2cl_eval(self, ouput_corpus_path, test_or_eval="eval"):
+    #     if "eval" == test_or_eval:
+    #         examples = self.eval_examples
+    #     elif "test" == test_or_eval:
+    #         examples = self.test_examples
+    #     else:
+    #         example = None
+    #         print("Input Para test_or_eval ERROR!")
+    #
+    #     example_set = [example.text_a for example in examples]
+    #
+    #     return example_set
 
 
 class InputExample(object):

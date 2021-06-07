@@ -390,10 +390,16 @@ if __name__ == '__main__':
         best_score = 0
         best_model = None
         wait = 0
+        # todo tokenizer is different
+        # todo tokenizer is different
+        # todo tokenizer is different
 
         for epoch in trange(int(args.num_train_epochs), desc="Epoch"):
             print("{}\tEpoch:\t{}".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), epoch))
             "========="
+            x = trainer.get_feature_embd(data.eval_dataloader)
+
+
             model.eval()
             total_features = torch.empty((0, args.feat_dim)).to(self.device)
             total_labels = torch.empty(0, dtype=torch.long).to(self.device)
