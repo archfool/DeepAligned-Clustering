@@ -352,7 +352,7 @@ if __name__ == '__main__':
 
         # todo step_3 准备数据
         data = Data(args)
-        data.prepare_cl_corpus(data_args.train_file)
+        data.corpus_dac2cl_train(data_args.train_file)
         data_collator, train_dataset = simcse_train.data_prepare(data_args, training_args, model_args, tokenizer)
 
         # todo step_4 pre_train
@@ -382,6 +382,9 @@ if __name__ == '__main__':
         # todo 冻结除了12层和pooler层之外的所有参数
         # todo 冻结除了12层和pooler层之外的所有参数
         # todo 冻结除了12层和pooler层之外的所有参数
+        # todo pooler param
+        # todo pooler param
+        # todo pooler param
 
         "======================================================================================================"
         best_score = 0
@@ -390,10 +393,27 @@ if __name__ == '__main__':
 
         for epoch in trange(int(args.num_train_epochs), desc="Epoch"):
             print("{}\tEpoch:\t{}".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), epoch))
+            "========="
+            model.eval()
+            total_features = torch.empty((0, args.feat_dim)).to(self.device)
+            total_labels = torch.empty(0, dtype=torch.long).to(self.device)
+
+            for batch in dataloader:
+                batch = tuple(t.to(self.device) for t in batch)
+                input_ids, input_mask, segment_ids, label_ids = batch
+                with torch.no_grad():
+                    feature = model(input_ids, segment_ids, input_mask, feature_ext=True)
+
+                total_features = torch.cat((total_features, feature))
+                total_labels = torch.cat((total_labels, label_ids))
+
+            "========="
+
+
             feats, _ = self.get_features_labels(data.train_semi_dataloader, self.model, args)
             feats = feats.cpu().numpy()
             print("\n{}\tBegin KMeans".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
-            km = KMeans(n_clusters=self.num_labels).fit(feats)
+            km = KMeans(n_clusters=data.num_labels).fit(feats)
             print("{}\tEnd KMeans".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
             score = metrics.silhouette_score(feats, km.labels_)

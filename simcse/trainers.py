@@ -142,7 +142,43 @@ class CLTrainer(Trainer):
 
         self.log(metrics)
         return metrics
-        
+
+
+    def get_feature_embd(self, dataloader):
+
+        self.model.eval()
+
+        # total_features = torch.empty((0, args.feat_dim)).cpu()
+        total_features = torch.empty((0, args.feat_dim)).cpu()
+
+        for batch in dataloader:
+            # todo judge device at initial
+            batch = tuple(t.to(self.device) for t in batch)
+            input_ids, input_mask, segment_ids, label_ids = batch
+            with torch.no_grad():
+                # feature = model(input_ids, segment_ids, input_mask, feature_ext=True)
+                outputs = self.model(
+                    input_ids=input_ids,
+                    attention_mask=None,
+                    token_type_ids=None,
+                    position_ids=None,
+                    head_mask=None,
+                    inputs_embeds=None,
+                    labels=None,
+                    output_attentions=None,
+                    output_hidden_states=True,
+                    return_dict=True,
+                    sent_emb=True,
+                    mlm_input_ids=None,
+                    mlm_labels=None,
+                )
+                pooler_output = outputs.pooler_output
+
+            total_features = torch.cat((total_features, pooler_output.cpu))
+
+        return total_features
+
+
     def _save_checkpoint(self, model, trial, metrics=None):
         """
         Compared to original implementation, we change the saving policy to

@@ -11,6 +11,7 @@ MODEL_NAME=bert-base-uncased
     --known_cls_ratio 0.75
     --cluster_num_factor 1.0
     --labeled_ratio 0.1
+    --wait_patient 20
     --num_pretrain_epochs 5
     --num_train_epochs 50
     --seed 1234

@@ -130,8 +130,7 @@ class Data:
 
         return dataloader
 
-
-    def prepare_cl_corpus(self, save_corpus_path):
+    def corpus_dac2cl_train(self, ouput_corpus_path):
         known_label_list = self.known_label_list
         train_labeled_examples = self.train_labeled_examples
         corpus = []
@@ -152,8 +151,21 @@ class Data:
         random.shuffle(corpus)
         corpus = ["sent0\tsent1"] + corpus
 
-        with open(save_corpus_path, 'w', encoding='utf-8') as f:
+        with open(ouput_corpus_path, 'w', encoding='utf-8') as f:
             f.write('\n'.join(corpus))
+
+    def corpus_dac2cl_eval(self, ouput_corpus_path, test_or_eval="eval"):
+        if "eval" == test_or_eval:
+            examples = self.eval_examples
+        elif "test" == test_or_eval:
+            examples = self.test_examples
+        else:
+            example = None
+            print("Input Para test_or_eval ERROR!")
+
+        example_set = [example.text_a for example in examples]
+
+        return example_set
 
 
 class InputExample(object):
