@@ -351,7 +351,7 @@ if __name__ == '__main__':
         model, tokenizer = simcse_train.load_model(data_args, training_args, model_args)
 
         # todo step_3 准备数据
-        data = Data(args)
+        data = Data(args, tokenizer)
         data.corpus_dac2cl_train(data_args.train_file)
         data_collator, train_dataset = simcse_train.data_prepare(data_args, training_args, model_args, tokenizer)
 
@@ -390,33 +390,10 @@ if __name__ == '__main__':
         best_score = 0
         best_model = None
         wait = 0
-        # todo tokenizer is different
-        # todo tokenizer is different
-        # todo tokenizer is different
 
         for epoch in trange(int(args.num_train_epochs), desc="Epoch"):
             print("{}\tEpoch:\t{}".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), epoch))
-            "========="
-            x = trainer.get_feature_embd(data.eval_dataloader)
-
-
-            model.eval()
-            total_features = torch.empty((0, args.feat_dim)).to(self.device)
-            total_labels = torch.empty(0, dtype=torch.long).to(self.device)
-
-            for batch in dataloader:
-                batch = tuple(t.to(self.device) for t in batch)
-                input_ids, input_mask, segment_ids, label_ids = batch
-                with torch.no_grad():
-                    feature = model(input_ids, segment_ids, input_mask, feature_ext=True)
-
-                total_features = torch.cat((total_features, feature))
-                total_labels = torch.cat((total_labels, label_ids))
-
-            "========="
-
-
-            feats, _ = self.get_features_labels(data.train_semi_dataloader, self.model, args)
+            feats = trainer.get_feature_embd(data.train_semi_dataloader)
             feats = feats.cpu().numpy()
             print("\n{}\tBegin KMeans".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
             km = KMeans(n_clusters=data.num_labels).fit(feats)
@@ -427,20 +404,20 @@ if __name__ == '__main__':
 
             # todo 判定early_stop
             if score > best_score:
-                best_model = copy.deepcopy(self.model)
+                best_model = copy.deepcopy(trainer.model)
                 wait = 0
                 best_score = score
             else:
                 wait += 1
                 if wait >= args.wait_patient:
-                    self.model = best_model
+                    trainer.model = best_model
                     break
 
             # todo 生成伪标签，更新旧标签为新伪标签
             pseudo_labels = self.alignment(km, args)
             train_dataloader = self.update_pseudo_labels(pseudo_labels, args, data)
 
-            "===============train======================="
+            "===============begin train======================="
             # tr_loss = 0
             # nb_tr_examples, nb_tr_steps = 0, 0
             # self.model.train()
@@ -463,6 +440,7 @@ if __name__ == '__main__':
             #
             # tr_loss = tr_loss / nb_tr_steps
             # print('train_loss', tr_loss)
+            "===============end train======================="
 
 
             if epoch % args.eval_epochs == 0:

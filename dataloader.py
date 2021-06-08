@@ -9,7 +9,7 @@ def set_seed(seed):
 
 class Data:
 
-    def __init__(self, args):
+    def __init__(self, args, tokenizer=None):
         set_seed(args.seed)
         max_seq_lengths = {'clinc': 30, 'stackoverflow': 45, 'banking': 55}
         args.max_seq_length = max_seq_lengths[args.dataset]
@@ -27,15 +27,15 @@ class Data:
         print('num_unlabeled_samples', len(self.train_unlabeled_examples))
         self.eval_examples = self.get_examples(processor, args, 'eval')
         self.test_examples = self.get_examples(processor, args, 'test')
-        self.train_labeled_dataloader = self.get_loader(self.train_labeled_examples, args, 'train')
+        self.train_labeled_dataloader = self.get_loader(self.train_labeled_examples, args, 'train', tokenizer)
 
         self.semi_input_ids, self.semi_input_mask, self.semi_segment_ids, self.semi_label_ids = self.get_semi(
-            self.train_labeled_examples, self.train_unlabeled_examples, args)
+            self.train_labeled_examples, self.train_unlabeled_examples, args, tokenizer)
         self.train_semi_dataloader = self.get_semi_loader(self.semi_input_ids, self.semi_input_mask,
                                                           self.semi_segment_ids, self.semi_label_ids, args)
 
-        self.eval_dataloader = self.get_loader(self.eval_examples, args, 'eval')
-        self.test_dataloader = self.get_loader(self.test_examples, args, 'test')
+        self.eval_dataloader = self.get_loader(self.eval_examples, args, 'eval', tokenizer)
+        self.test_dataloader = self.get_loader(self.test_examples, args, 'test', tokenizer)
 
     # todo load data and change into new format
     def get_examples(self, processor, args, mode='train'):
@@ -73,9 +73,10 @@ class Data:
         return examples
 
     # todo convert corpus to ids
-    def get_semi(self, labeled_examples, unlabeled_examples, args):
+    def get_semi(self, labeled_examples, unlabeled_examples, args, tokenizer=None):
 
-        tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=True)
+        if tokenizer is None:
+            tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=True)
         labeled_features = convert_examples_to_features(labeled_examples, self.known_label_list, args.max_seq_length,
                                                         tokenizer)
         unlabeled_features = convert_examples_to_features(unlabeled_examples, self.all_label_list, args.max_seq_length,
@@ -106,9 +107,9 @@ class Data:
         return semi_dataloader
 
     # todo convert corpus to ids and push into loader
-    def get_loader(self, examples, args, mode='train'):
-        # todo to replace?
-        tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=True)
+    def get_loader(self, examples, args, mode='train', tokenizer=None):
+        if tokenizer is None:
+            tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=True)
 
         if mode == 'train' or mode == 'eval':
             features = convert_examples_to_features(examples, self.known_label_list, args.max_seq_length, tokenizer)
