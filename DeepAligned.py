@@ -15,6 +15,7 @@ from transformers.data.data_collator import DataCollatorForLanguageModeling
 from transformers.file_utils import cached_property, torch_required, is_torch_available, is_torch_tpu_available
 from simcse.models import RobertaForCL, BertForCL
 from simcse.trainers import CLTrainer
+import cluster_align
 
 logger = logging.getLogger(__name__)
 
@@ -355,7 +356,7 @@ if __name__ == '__main__':
         data.corpus_dac2cl_train(data_args.train_file)
         data_collator, train_dataset = simcse_train.data_prepare(data_args, training_args, model_args, tokenizer)
 
-        # todo step_4 pre_train
+        # todo step_4 预训练
         training_args.do_train = True
         if args.pretrain:
             training_args.num_train_epochs = args.num_pretrain_epochs
@@ -370,7 +371,7 @@ if __name__ == '__main__':
 
             # todo model pre_train
             train_result = trainer.train(model_path=model_args.model_name_or_path)
-            model = trainer.model
+            model = copy.deepcopy(trainer.model)
             trainer.save_model()  # Saves the tokenizer too for easy upload
             # todo 进行聚类，剔除低密度的簇，统计符合条件的簇的个数
             # todo 只会在训练DAC之前进行一次簇个数的估计
@@ -386,10 +387,11 @@ if __name__ == '__main__':
         # todo pooler param
         # todo pooler param
 
-        "======================================================================================================"
+        # todo step_5 聚类-训练-对齐
         best_score = 0
         best_model = None
         wait = 0
+        centroids = None
 
         for epoch in trange(int(args.num_train_epochs), desc="Epoch"):
             print("{}\tEpoch:\t{}".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), epoch))
@@ -414,33 +416,24 @@ if __name__ == '__main__':
                     break
 
             # todo 生成伪标签，更新旧标签为新伪标签
-            pseudo_labels = self.alignment(km, args)
-            train_dataloader = self.update_pseudo_labels(pseudo_labels, args, data)
+            centroids, pseudo_labels = cluster_align.alignment(
+                data.num_labels, centroids, km, trainer.model.mlp.dense.weight.size()[1], trainer.args.device)
+            train_dataloader = cluster_align.update_pseudo_labels(
+                data.semi_input_ids, data.semi_input_mask, data.semi_segment_ids, pseudo_labels, args.train_batch_size)
+            # pseudo_labels = self.alignment(km, args)
+            # train_dataloader = self.update_pseudo_labels(pseudo_labels, args, data)
 
-            "===============begin train======================="
-            # tr_loss = 0
-            # nb_tr_examples, nb_tr_steps = 0, 0
-            # self.model.train()
-            #
-            # # for batch in tqdm(train_dataloader, desc="Pseudo-Training"):
-            # for batch in train_dataloader:
-            #     batch = tuple(t.to(self.device) for t in batch)
-            #     input_ids, input_mask, segment_ids, label_ids = batch
-            #
-            #     loss = self.model(input_ids, segment_ids, input_mask, label_ids, mode='train')
-            #
-            #     loss.backward()
-            #
-            #     tr_loss += loss.item()
-            #     nb_tr_examples += input_ids.size(0)
-            #     nb_tr_steps += 1
-            #
-            #     self.optimizer.step()
-            #     self.optimizer.zero_grad()
-            #
-            # tr_loss = tr_loss / nb_tr_steps
-            # print('train_loss', tr_loss)
-            "===============end train======================="
+            training_args.num_train_epochs = 5
+            trainer = CLTrainer(
+                model=xxx,
+                args=training_args,
+                train_dataset=xxx,
+                tokenizer=tokenizer,
+                data_collator=data_collator,
+            )
+            train_result = trainer.train()
+            # trainer.model_args = model_args
+            # train_result = trainer.train(model_path=model_args.model_name_or_path)
 
 
             if epoch % args.eval_epochs == 0:
