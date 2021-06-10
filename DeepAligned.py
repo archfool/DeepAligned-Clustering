@@ -355,18 +355,26 @@ if __name__ == '__main__':
         data = Data(args, tokenizer)
         data.corpus_dac2cl_train(data_args.train_file)
         data_collator, train_dataset = simcse_train.data_prepare(data_args, training_args, model_args, tokenizer)
+        training_args.do_train = True
+        trainer = CLTrainer(
+            model=model,
+            args=training_args,
+            train_dataset=train_dataset if args.pretrain else None,
+            tokenizer=tokenizer,
+            data_collator=data_collator,
+        )
 
         # todo step_4 预训练
-        training_args.do_train = True
+        # training_args.do_train = True
         if args.pretrain:
             training_args.num_train_epochs = args.num_pretrain_epochs
-            trainer = CLTrainer(
-                model=model,
-                args=training_args,
-                train_dataset=train_dataset if training_args.do_train else None,
-                tokenizer=tokenizer,
-                data_collator=data_collator,
-            )
+            # trainer = CLTrainer(
+            #     model=model,
+            #     args=training_args,
+            #     train_dataset=train_dataset if training_args.do_train else None,
+            #     tokenizer=tokenizer,
+            #     data_collator=data_collator,
+            # )
             trainer.model_args = model_args
 
             # todo model pre_train
@@ -401,6 +409,7 @@ if __name__ == '__main__':
             km = KMeans(n_clusters=data.num_labels).fit(feats)
             print("{}\tEnd KMeans".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
+            # todo replace judge method
             score = metrics.silhouette_score(feats, km.labels_)
             print('score(the bigger the better)', score)
 
@@ -418,28 +427,19 @@ if __name__ == '__main__':
             # todo 生成伪标签，更新旧标签为新伪标签
             centroids, pseudo_labels = cluster_align.alignment(
                 data.num_labels, centroids, km, trainer.model.mlp.dense.weight.size()[1], trainer.args.device)
-            train_dataloader = cluster_align.update_pseudo_labels(
-                data.semi_input_ids, data.semi_input_mask, data.semi_segment_ids, pseudo_labels, args.train_batch_size)
-            # pseudo_labels = self.alignment(km, args)
-            # train_dataloader = self.update_pseudo_labels(pseudo_labels, args, data)
+            data.corpus_dac2cl_train(data_args.train_file, pseudo_labels)
+            data_collator, train_dataset = simcse_train.data_prepare(data_args, training_args, model_args, tokenizer)
 
-            training_args.num_train_epochs = 5
-            trainer = CLTrainer(
-                model=xxx,
-                args=training_args,
-                train_dataset=xxx,
-                tokenizer=tokenizer,
-                data_collator=data_collator,
-            )
+            trainer.args.num_train_epochs = 5
+            trainer.train_dataset =train_dataset
             train_result = trainer.train()
-            # trainer.model_args = model_args
             # train_result = trainer.train(model_path=model_args.model_name_or_path)
 
 
-            if epoch % args.eval_epochs == 0:
-                print("=============Begin in_batch Eval=============")
-                self.evaluation(args, data)
-                print("=============End in_batch Eval=============")
+            # if epoch % args.eval_epochs == 0:
+            #     print("=============Begin in_batch Eval=============")
+            #     self.evaluation(args, data)
+            #     print("=============End in_batch Eval=============")
         "======================================================================================================"
 
     else:

@@ -40,8 +40,8 @@ def alignment(num_labels, centroids, km, feat_dim, device):
     return centroids, pseudo_labels
 
 
-def update_pseudo_labels(input_ids, input_mask, segment_ids, pseudo_labels, batch_size):
-    train_data = TensorDataset(input_ids, input_mask, segment_ids, pseudo_labels)
-    train_sampler = SequentialSampler(train_data)
-    train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=batch_size)
-    return train_dataloader
+# def update_pseudo_labels(input_ids, input_mask, segment_ids, pseudo_labels, batch_size):
+#     train_data = TensorDataset(input_ids, input_mask, segment_ids, pseudo_labels)
+#     train_sampler = SequentialSampler(train_data)
+#     train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=batch_size)
+#     return train_dataloader

@@ -22,7 +22,7 @@ class Data:
         self.known_label_list = list(np.random.choice(np.array(self.all_label_list), self.n_known_cls, replace=False))
         self.num_labels = int(len(self.all_label_list) * args.cluster_num_factor)
 
-        self.train_labeled_examples, self.train_unlabeled_examples = self.get_examples(processor, args, 'train')
+        self.train_labeled_examples, self.train_unlabeled_examples, self.train_ori_examples = self.get_examples(processor, args, 'train')
         print('num_labeled_samples', len(self.train_labeled_examples))
         print('num_unlabeled_samples', len(self.train_unlabeled_examples))
         self.eval_examples = self.get_examples(processor, args, 'eval')
@@ -51,14 +51,14 @@ class Data:
                 pos = list(np.where(train_labels == label)[0])
                 train_labeled_ids.extend(random.sample(pos, num))
 
-            train_labeled_examples, train_unlabeled_examples = [], []
+            train_labeled_examples, train_unlabeled_examples, train_all_examples = [], [], []
             for idx, example in enumerate(ori_examples):
                 if idx in train_labeled_ids:
                     train_labeled_examples.append(example)
                 else:
                     train_unlabeled_examples.append(example)
 
-            return train_labeled_examples, train_unlabeled_examples
+            return train_labeled_examples, train_unlabeled_examples, ori_examples
 
         elif mode == 'eval':
             eval_examples = []
@@ -131,10 +131,18 @@ class Data:
 
         return dataloader
 
-    def corpus_dac2cl_train(self, ouput_corpus_path):
-        known_label_list = self.known_label_list
-        train_labeled_examples = self.train_labeled_examples
+    def corpus_dac2cl_train(self, ouput_corpus_path, pseudo_labels=None):
+        if pseudo_labels is None:
+            known_label_list = self.known_label_list
+            train_labeled_examples = self.train_labeled_examples
+        else:
+            labels = list(pseudo_labels.cpu().numpy())
+            known_label_list = set(labels)
+            train_labeled_examples = self.train_ori_examples
+            for idx in range(len(self.train_ori_examples)):
+                train_labeled_examples[idx].label = labels[idx]
         corpus = []
+        # todo rewrite to speedip
         for label in known_label_list:
             example_set = []
             for example in train_labeled_examples:
