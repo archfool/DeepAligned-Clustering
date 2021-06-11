@@ -7,6 +7,8 @@ from scipy.optimize import linear_sum_assignment
 import numpy as np
 import torch
 from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler, TensorDataset)
+from sklearn.cluster import KMeans
+from sklearn.metrics import confusion_matrix, normalized_mutual_info_score, adjusted_rand_score, accuracy_score
 
 
 def alignment(num_labels, centroids, km, feat_dim, device):
@@ -38,6 +40,54 @@ def alignment(num_labels, centroids, km, feat_dim, device):
     pseudo_labels = torch.tensor(pseudo_labels, dtype=torch.long).to(device)
 
     return centroids, pseudo_labels
+
+
+def evaluation(trainer, data):
+
+    # feats, labels = self.get_features_labels(data.test_dataloader, self.model, args)
+    # feats = feats.cpu().numpy()
+    # km = KMeans(n_clusters=self.num_labels).fit(feats)
+    feats, labels = trainer.get_featureEmbd_label(data.test_dataloader)
+    feats = feats.cpu().numpy()
+    km = KMeans(n_clusters=data.num_labels).fit(feats)
+
+    y_pred = km.labels_
+    y_true = labels.cpu().numpy()
+
+    results = clustering_score(y_true, y_pred)
+    print('results', results)
+
+    ind, _ = hungray_aligment(y_true, y_pred)
+    map_ = {i[0]: i[1] for i in ind}
+    y_pred = np.array([map_[idx] for idx in y_pred])
+
+    cm = confusion_matrix(y_true, y_pred)
+    print('confusion matrix\n', cm)
+    # self.test_results = results
+    #
+    # self.save_results(args)
+
+
+def hungray_aligment(y_true, y_pred):
+    D = max(y_pred.max(), y_true.max()) + 1
+    w = np.zeros((D, D))
+    for i in range(y_pred.size):
+        w[y_pred[i], y_true[i]] += 1
+
+    ind = np.transpose(np.asarray(linear_sum_assignment(w.max() - w)))
+    return ind, w
+
+
+def clustering_score(y_true, y_pred):
+    return {'ACC': round(clustering_accuracy_score(y_true, y_pred) * 100, 2),
+            'ARI': round(adjusted_rand_score(y_true, y_pred) * 100, 2),
+            'NMI': round(normalized_mutual_info_score(y_true, y_pred) * 100, 2)}
+
+
+def clustering_accuracy_score(y_true, y_pred):
+    ind, w = hungray_aligment(y_true, y_pred)
+    acc = sum([w[i, j] for i, j in ind]) / y_pred.size
+    return acc
 
 
 # def update_pseudo_labels(input_ids, input_mask, segment_ids, pseudo_labels, batch_size):

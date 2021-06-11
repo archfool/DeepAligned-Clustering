@@ -349,15 +349,16 @@ if __name__ == '__main__':
         set_seed(training_args.seed)
 
         # todo step_2 加载模型和分词器
-        model, tokenizer = simcse_train.load_model(data_args, training_args, model_args)
+        init_model, tokenizer = simcse_train.load_model(data_args, training_args, model_args)
 
         # todo step_3 准备数据
         data = Data(args, tokenizer)
-        data.corpus_dac2cl_train(data_args.train_file)
-        data_collator, train_dataset = simcse_train.data_prepare(data_args, training_args, model_args, tokenizer)
+        data.corpus_dac2cl_train(data_args.pre_train_file)
+        data_collator, train_dataset = simcse_train.data_prepare(
+            data_args, training_args, model_args, tokenizer, data_args.pre_train_file)
         training_args.do_train = True
         trainer = CLTrainer(
-            model=model,
+            model=init_model,
             args=training_args,
             train_dataset=train_dataset if args.pretrain else None,
             tokenizer=tokenizer,
@@ -369,17 +370,19 @@ if __name__ == '__main__':
         if args.pretrain:
             training_args.num_train_epochs = args.num_pretrain_epochs
             # trainer = CLTrainer(
-            #     model=model,
+            #     model=init_model,
             #     args=training_args,
             #     train_dataset=train_dataset if training_args.do_train else None,
             #     tokenizer=tokenizer,
             #     data_collator=data_collator,
             # )
+            # todo
+            trainer.args.num_train_epochs = args.num_pretrain_epochs
             trainer.model_args = model_args
 
             # todo model pre_train
             train_result = trainer.train(model_path=model_args.model_name_or_path)
-            model = copy.deepcopy(trainer.model)
+            # model = copy.deepcopy(trainer.model)
             trainer.save_model()  # Saves the tokenizer too for easy upload
             # todo 进行聚类，剔除低密度的簇，统计符合条件的簇的个数
             # todo 只会在训练DAC之前进行一次簇个数的估计
@@ -403,7 +406,7 @@ if __name__ == '__main__':
 
         for epoch in trange(int(args.num_train_epochs), desc="Epoch"):
             print("{}\tEpoch:\t{}".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), epoch))
-            feats = trainer.get_feature_embd(data.train_semi_dataloader)
+            feats, _ = trainer.get_featureEmbd_label(data.train_semi_dataloader)
             feats = feats.cpu().numpy()
             print("\n{}\tBegin KMeans".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
             km = KMeans(n_clusters=data.num_labels).fit(feats)
@@ -424,23 +427,22 @@ if __name__ == '__main__':
                     trainer.model = best_model
                     break
 
-            # todo 生成伪标签，更新旧标签为新伪标签
+            # todo 生成伪标签，更新旧标签为新伪标签，保存为新的语料文本文件
             centroids, pseudo_labels = cluster_align.alignment(
                 data.num_labels, centroids, km, trainer.model.mlp.dense.weight.size()[1], trainer.args.device)
             data.corpus_dac2cl_train(data_args.train_file, pseudo_labels)
-            data_collator, train_dataset = simcse_train.data_prepare(data_args, training_args, model_args, tokenizer)
+            data_collator, train_dataset = simcse_train.data_prepare(
+                data_args, training_args, model_args, tokenizer, data_args.train_file)
 
-            trainer.args.num_train_epochs = 5
-            trainer.train_dataset =train_dataset
+            trainer.args.num_train_epochs = 1
+            trainer.train_dataset = train_dataset
             train_result = trainer.train()
             # train_result = trainer.train(model_path=model_args.model_name_or_path)
 
-
-            # if epoch % args.eval_epochs == 0:
-            #     print("=============Begin in_batch Eval=============")
-            #     self.evaluation(args, data)
-            #     print("=============End in_batch Eval=============")
-        "======================================================================================================"
+            if epoch % args.eval_epochs == 0:
+                print("=============Begin in_batch Eval=============")
+                cluster_align.evaluation(trainer, data)
+                print("=============End in_batch Eval=============")
 
     else:
         # todo step_2 读取数据

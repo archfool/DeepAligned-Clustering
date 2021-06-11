@@ -21,6 +21,7 @@ MODEL_NAME=bert-base-uncased
     --use_CL
     --eval_epochs 1
 --model_name_or_path /media/archfool/data/data/huggingface/bert-base-uncased
+--pre_train_file /media/archfool/data/data/datasets-for-clustering/${DATASET}/pre_train_cl.tsv.csv
 --train_file /media/archfool/data/data/datasets-for-clustering/${DATASET}/train_cl.tsv.csv
 --output_dir /media/archfool/data/data/my-sup-simcse-bert-base-uncased
 --per_device_train_batch_size 128

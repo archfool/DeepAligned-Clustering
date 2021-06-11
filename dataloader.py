@@ -22,7 +22,8 @@ class Data:
         self.known_label_list = list(np.random.choice(np.array(self.all_label_list), self.n_known_cls, replace=False))
         self.num_labels = int(len(self.all_label_list) * args.cluster_num_factor)
 
-        self.train_labeled_examples, self.train_unlabeled_examples, self.train_ori_examples = self.get_examples(processor, args, 'train')
+        self.train_labeled_examples, self.train_unlabeled_examples, self.train_ori_examples = self.get_examples(
+            processor, args, 'train')
         print('num_labeled_samples', len(self.train_labeled_examples))
         print('num_unlabeled_samples', len(self.train_unlabeled_examples))
         self.eval_examples = self.get_examples(processor, args, 'eval')
@@ -131,7 +132,7 @@ class Data:
 
         return dataloader
 
-    def corpus_dac2cl_train(self, ouput_corpus_path, pseudo_labels=None):
+    def corpus_dac2cl_train(self, ouput_corpus_path, pseudo_labels=None, pre_train_file=None):
         if pseudo_labels is None:
             known_label_list = self.known_label_list
             train_labeled_examples = self.train_labeled_examples
@@ -157,6 +158,13 @@ class Data:
                     if text_a != text_b:
                         corpus.append(text_a + '\t' + text_b)
 
+        # todo 验证代码有无BUG
+        # todo 验证代码有无BUG
+        # todo 验证代码有无BUG
+        if pre_train_file is not None:
+            with open(pre_train_file, "r", encoding="utf-8") as f:
+                pre_corpus = f.readlines()
+                corpus = corpus + pre_corpus[1:] * 2
         random.shuffle(corpus)
         corpus = ["sent0\tsent1"] + corpus
 

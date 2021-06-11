@@ -153,8 +153,13 @@ class DataTrainingArguments:
     )
 
     # SimCSE's arguments
-    train_file: Optional[str] = field(
+    pre_train_file: Optional[str] = field(
         default=None, 
+        metadata={"help": "The training data file (.txt or .csv)."}
+    )
+    # SimCSE's arguments
+    train_file: Optional[str] = field(
+        default=None,
         metadata={"help": "The training data file (.txt or .csv)."}
     )
     max_seq_length: Optional[int] = field(
@@ -287,7 +292,7 @@ def set_log(data_args, training_args, model_args, logging):
     logger.info("Training/evaluation parameters %s", training_args)
 
 
-def data_prepare(data_args, training_args, model_args, tokenizer):
+def data_prepare(data_args, training_args, model_args, tokenizer, train_file):
     # Get the datasets: you can either provide your own CSV/JSON/TXT training and evaluation files (see below)
     # or just provide the name of one of the public datasets available on the hub at https://huggingface.co/datasets/
     # (the dataset will be downloaded automatically from the datasets Hub
@@ -299,13 +304,13 @@ def data_prepare(data_args, training_args, model_args, tokenizer):
     # download the dataset.
     # todo step_2 读取数据
     data_files = {}
-    if data_args.train_file is not None:
-        data_files["train"] = data_args.train_file
-    extension = data_args.train_file.split(".")[-1]
+    if train_file is not None:
+        data_files["train"] = train_file
+    extension = train_file.split(".")[-1]
     if extension == "txt":
         extension = "text"
     if extension == "csv" or extension == "tsv":
-        datasets = load_dataset(extension, data_files=data_files, cache_dir="./data/", delimiter="\t" if "tsv" in data_args.train_file else ",")
+        datasets = load_dataset(extension, data_files=data_files, cache_dir="./data/", delimiter="\t" if "tsv" in train_file else ",")
     else:
         datasets = load_dataset(extension, data_files=data_files, cache_dir="./data/")
 

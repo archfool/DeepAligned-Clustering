@@ -144,12 +144,13 @@ class CLTrainer(Trainer):
         return metrics
 
 
-    def get_feature_embd(self, dataloader):
+    def get_featureEmbd_label(self, dataloader):
 
         self.model.eval()
 
         # total_features = torch.empty((0, args.feat_dim)).cpu()
         total_features = torch.empty((0, self.model.mlp.dense.weight.size()[1])).cpu()
+        total_labels = torch.empty(0, dtype=torch.long).cpu()
 
         for batch in dataloader:
             batch = tuple(t.to(torch.device(self.args.device)) for t in batch)
@@ -174,8 +175,9 @@ class CLTrainer(Trainer):
                 pooler_output = outputs.pooler_output
 
             total_features = torch.cat((total_features, pooler_output.cpu()))
+            total_labels = torch.cat((total_labels, label_ids))
 
-        return total_features
+        return total_features, total_labels
 
 
     def _save_checkpoint(self, model, trial, metrics=None):
