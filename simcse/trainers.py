@@ -175,7 +175,7 @@ class CLTrainer(Trainer):
                 pooler_output = outputs.pooler_output
 
             total_features = torch.cat((total_features, pooler_output.cpu()))
-            total_labels = torch.cat((total_labels, label_ids))
+            total_labels = torch.cat((total_labels, label_ids.cpu()))
 
         return total_features, total_labels
 

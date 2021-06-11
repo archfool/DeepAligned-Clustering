@@ -163,8 +163,8 @@ class Data:
         # todo 验证代码有无BUG
         if pre_train_file is not None:
             with open(pre_train_file, "r", encoding="utf-8") as f:
-                pre_corpus = f.readlines()
-                corpus = corpus + pre_corpus[1:] * 2
+                pre_corpus = f.read().split("\n")
+            corpus = corpus + pre_corpus[1:] * 2
         random.shuffle(corpus)
         corpus = ["sent0\tsent1"] + corpus
 

@@ -189,6 +189,7 @@ if __name__ == "__main__":
     model_paras = [(para_name, para_value) for para_name, para_value in model.named_parameters()]
 
     path_model_bert = r'E:\data\huggingface\bert-base-uncased'
+    path_model_bert = "/media/archfool/data/data/huggingface/bert-base-uncased"
 
     tokenizer = transformers.BertTokenizer.from_pretrained(path_model_bert)
     model_config = transformers.BertConfig.from_pretrained(path_model_bert)

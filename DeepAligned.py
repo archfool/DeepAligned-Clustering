@@ -349,7 +349,7 @@ if __name__ == '__main__':
         set_seed(training_args.seed)
 
         # todo step_2 加载模型和分词器
-        init_model, tokenizer = simcse_train.load_model(data_args, training_args, model_args)
+        base_model, tokenizer = simcse_train.load_model(data_args, training_args, model_args)
 
         # todo step_3 准备数据
         data = Data(args, tokenizer)
@@ -358,7 +358,7 @@ if __name__ == '__main__':
             data_args, training_args, model_args, tokenizer, data_args.pre_train_file)
         training_args.do_train = True
         trainer = CLTrainer(
-            model=init_model,
+            model=base_model,
             args=training_args,
             train_dataset=train_dataset if args.pretrain else None,
             tokenizer=tokenizer,
@@ -370,7 +370,7 @@ if __name__ == '__main__':
         if args.pretrain:
             training_args.num_train_epochs = args.num_pretrain_epochs
             # trainer = CLTrainer(
-            #     model=init_model,
+            #     model=base_model,
             #     args=training_args,
             #     train_dataset=train_dataset if training_args.do_train else None,
             #     tokenizer=tokenizer,
@@ -390,13 +390,6 @@ if __name__ == '__main__':
             # todo 只会在训练DAC之前进行一次簇个数的估计
             # todo 进行聚类，剔除低密度的簇，统计符合条件的簇的个数
             # todo 只会在训练DAC之前进行一次簇个数的估计
-
-        # todo 冻结除了12层和pooler层之外的所有参数
-        # todo 冻结除了12层和pooler层之外的所有参数
-        # todo 冻结除了12层和pooler层之外的所有参数
-        # todo pooler param
-        # todo pooler param
-        # todo pooler param
 
         # todo step_5 聚类-训练-对齐
         best_score = 0
@@ -430,7 +423,7 @@ if __name__ == '__main__':
             # todo 生成伪标签，更新旧标签为新伪标签，保存为新的语料文本文件
             centroids, pseudo_labels = cluster_align.alignment(
                 data.num_labels, centroids, km, trainer.model.mlp.dense.weight.size()[1], trainer.args.device)
-            data.corpus_dac2cl_train(data_args.train_file, pseudo_labels)
+            data.corpus_dac2cl_train(data_args.train_file, pseudo_labels, data_args.pre_train_file)
             data_collator, train_dataset = simcse_train.data_prepare(
                 data_args, training_args, model_args, tokenizer, data_args.train_file)
 
@@ -443,6 +436,8 @@ if __name__ == '__main__':
                 print("=============Begin in_batch Eval=============")
                 cluster_align.evaluation(trainer, data)
                 print("=============End in_batch Eval=============")
+
+        trainer.save_model()
 
     else:
         # todo step_2 读取数据
