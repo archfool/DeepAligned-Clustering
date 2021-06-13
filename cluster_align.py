@@ -59,12 +59,12 @@ def evaluation(trainer, data):
     results = clustering_score(y_true, y_pred)
     print('results', results)
 
-    ind, _ = hungray_aligment(y_true, y_pred)
-    map_ = {i[0]: i[1] for i in ind}
-    y_pred = np.array([map_[idx] for idx in y_pred])
-
-    cm = confusion_matrix(y_true, y_pred)
-    print('confusion matrix\n', cm)
+    # ind, _ = hungray_aligment(y_true, y_pred)
+    # map_ = {i[0]: i[1] for i in ind}
+    # y_pred = np.array([map_[idx] for idx in y_pred])
+    #
+    # cm = confusion_matrix(y_true, y_pred)
+    # print('confusion matrix\n', cm)
 
     # save_results(results)
     return results
