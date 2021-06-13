@@ -376,7 +376,6 @@ if __name__ == '__main__':
             #     tokenizer=tokenizer,
             #     data_collator=data_collator,
             # )
-            # todo
             trainer.args.num_train_epochs = args.num_pretrain_epochs
             trainer.model_args = model_args
 
