@@ -158,14 +158,13 @@ class Data:
                     if text_a != text_b:
                         corpus.append(text_a + '\t' + text_b)
 
-        # todo 验证代码有无BUG
-        # todo 验证代码有无BUG
-        # todo 验证代码有无BUG
         if pre_train_file is not None:
             with open(pre_train_file, "r", encoding="utf-8") as f:
                 pre_corpus = f.read().split("\n")
-            corpus = corpus + pre_corpus[1:] * 2
+            corpus = corpus + pre_corpus[1:] * 10
         random.shuffle(corpus)
+        if pre_train_file is not None:
+            corpus = corpus[:int(len(corpus)/100)]
         corpus = ["sent0\tsent1"] + corpus
 
         with open(ouput_corpus_path, 'w', encoding='utf-8') as f:

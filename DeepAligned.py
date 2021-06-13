@@ -313,14 +313,43 @@ def replace_env_paras(env_paras, args_list):
         return tuple(args_list)
 
 
+def save_result(result, args):
+    if not os.path.exists(args.save_results_path):
+        os.makedirs(args.save_results_path)
+
+    var = [args.dataset, args.method, args.known_cls_ratio, args.labeled_ratio, args.cluster_num_factor, args.seed]
+    names = ['dataset', 'method', 'known_cls_ratio', 'labeled_ratio', 'cluster_num_factor', 'seed']
+    vars_dict = {k: v for k, v in zip(names, var)}
+    results = dict(result, **vars_dict)
+    keys = list(results.keys())
+    values = list(results.values())
+
+    file_name = 'results' + '.csv'
+    results_path = os.path.join(args.save_results_path, file_name)
+
+    if not os.path.exists(results_path):
+        ori = []
+        ori.append(values)
+        df1 = pd.DataFrame(ori, columns=keys)
+        df1.to_csv(results_path, index=False)
+    else:
+        df1 = pd.read_csv(results_path)
+        new = pd.DataFrame(results, index=[1])
+        df1 = df1.append(new, ignore_index=True)
+        df1.to_csv(results_path, index=False)
+    data_diagram = pd.read_csv(results_path)
+
+    print('test_results', data_diagram)
+
+
 if __name__ == '__main__':
 
     print('Data and Parameters Initialization...')
 
-    # todo step_1 读取配置参数
+    # step_1 读取配置参数
     env_paras = {
         'DATASET': 'clinc',
-        'MODEL_NAME': 'bert-base-uncased',
+        'MODEL_NAME': 'roberta-large',
     }
     parser = init_model()
     # args = parser.parse_args()
@@ -348,10 +377,10 @@ if __name__ == '__main__':
         # Set seed before initializing model.
         set_seed(training_args.seed)
 
-        # todo step_2 加载模型和分词器
+        # step_2 加载模型和分词器
         base_model, tokenizer = simcse_train.load_model(data_args, training_args, model_args)
 
-        # todo step_3 准备数据
+        # step_3 准备数据
         data = Data(args, tokenizer)
         data.corpus_dac2cl_train(data_args.pre_train_file)
         data_collator, train_dataset = simcse_train.data_prepare(
@@ -365,7 +394,7 @@ if __name__ == '__main__':
             data_collator=data_collator,
         )
 
-        # todo step_4 预训练
+        # step_4 预训练
         # training_args.do_train = True
         if args.pretrain:
             training_args.num_train_epochs = args.num_pretrain_epochs
@@ -379,8 +408,8 @@ if __name__ == '__main__':
             trainer.args.num_train_epochs = args.num_pretrain_epochs
             trainer.model_args = model_args
 
-            # todo model pre_train
-            train_result = trainer.train(model_path=model_args.model_name_or_path)
+            # model pre_train
+            train_result = trainer.train(model_path=model_args.model_name_or_path, data_eval=data)
             # model = copy.deepcopy(trainer.model)
             trainer.save_model()  # Saves the tokenizer too for easy upload
             # todo 进行聚类，剔除低密度的簇，统计符合条件的簇的个数
@@ -390,12 +419,13 @@ if __name__ == '__main__':
             # todo 进行聚类，剔除低密度的簇，统计符合条件的簇的个数
             # todo 只会在训练DAC之前进行一次簇个数的估计
 
-        # todo step_5 聚类-训练-对齐
+        # step_5 聚类-训练-对齐
         best_score = 0
         best_model = None
         wait = 0
         centroids = None
 
+        trainer.args.num_train_epochs = 1
         for epoch in trange(int(args.num_train_epochs), desc="Epoch"):
             print("{}\tEpoch:\t{}".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), epoch))
             feats, _ = trainer.get_featureEmbd_label(data.train_semi_dataloader)
@@ -419,30 +449,32 @@ if __name__ == '__main__':
                     trainer.model = best_model
                     break
 
-            # todo 生成伪标签，更新旧标签为新伪标签，保存为新的语料文本文件
+            # todo 生成伪标签，更新旧标签/vector为新伪标签/vector，保存为新的语料文本文件
             centroids, pseudo_labels = cluster_align.alignment(
                 data.num_labels, centroids, km, trainer.model.mlp.dense.weight.size()[1], trainer.args.device)
             data.corpus_dac2cl_train(data_args.train_file, pseudo_labels, data_args.pre_train_file)
             data_collator, train_dataset = simcse_train.data_prepare(
                 data_args, training_args, model_args, tokenizer, data_args.train_file)
-
-            trainer.args.num_train_epochs = 1
             trainer.train_dataset = train_dataset
-            train_result = trainer.train()
-            # train_result = trainer.train(model_path=model_args.model_name_or_path)
 
             if epoch % args.eval_epochs == 0:
                 print("=============Begin in_batch Eval=============")
-                cluster_align.evaluation(trainer, data)
+                result = cluster_align.evaluation(trainer, data)
+                save_result(result, args)
                 print("=============End in_batch Eval=============")
 
+            train_result = trainer.train()
+            # train_result = trainer.train(model_path=model_args.model_name_or_path)
+
+
+        trainer.model = best_model
         trainer.save_model()
 
     else:
-        # todo step_2 读取数据
+        # step_2 读取数据
         data = Data(args)
 
-        # todo step_4 加载模型Manager
+        # step_3 加载模型Manager
         if args.pretrain:
             print('Pre-training begin...')
             manager_p = PretrainModelManager(args, data)

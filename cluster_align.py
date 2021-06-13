@@ -25,11 +25,13 @@ def alignment(num_labels, centroids, km, feat_dim, device):
         new_centroids = torch.tensor(new_centroids).to(device)
         centroids = torch.empty(num_labels, feat_dim).to(device)
 
+        # update cluster centrol vector
         alignment_labels = list(col_ind)
         for i in range(num_labels):
             label = alignment_labels[i]
             centroids[i] = new_centroids[label]
 
+        # update label of samples, coresponding to the first one
         pseudo2label = {label: i for i, label in enumerate(alignment_labels)}
         pseudo_labels = np.array([pseudo2label[label] for label in km.labels_])
 
@@ -63,9 +65,9 @@ def evaluation(trainer, data):
 
     cm = confusion_matrix(y_true, y_pred)
     print('confusion matrix\n', cm)
-    # self.test_results = results
-    #
-    # self.save_results(args)
+
+    # save_results(results)
+    return results
 
 
 def hungray_aligment(y_true, y_pred):
@@ -88,6 +90,8 @@ def clustering_accuracy_score(y_true, y_pred):
     ind, w = hungray_aligment(y_true, y_pred)
     acc = sum([w[i, j] for i, j in ind]) / y_pred.size
     return acc
+
+
 
 
 # def update_pseudo_labels(input_ids, input_mask, segment_ids, pseudo_labels, batch_size):
