@@ -1,8 +1,8 @@
 #!/usr/bin bash
 
 DATASET=clinc
-#MODEL_NAME=bert-base-uncased
-MODEL_NAME=roberta-large
+MODEL_NAME=bert-base-uncased
+#MODEL_NAME=roberta-large
 
     --data_dir /media/archfool/data/data/datasets-for-clustering
     --save_results_path /media/archfool/data/data/my-sup-simcse-${MODEL_NAME}/${DATASET}
@@ -20,16 +20,16 @@ MODEL_NAME=roberta-large
     --pretrain
     --save_model
     --use_CL
-    --eval_epochs 1
+    --eval_per_epochs 1
 --model_name_or_path /media/archfool/data/data/huggingface/${MODEL_NAME}
 --pre_train_file /media/archfool/data/data/datasets-for-clustering/${DATASET}/pre_train_cl.tsv.csv
 --train_file /media/archfool/data/data/datasets-for-clustering/${DATASET}/train_cl.tsv.csv
 --output_dir /media/archfool/data/data/my-sup-simcse-${MODEL_NAME}
---per_device_train_batch_size 8
+--per_device_train_batch_size 32
 --learning_rate 5e-5
 --max_seq_length 32
---logging_steps 10000
---save_steps 10000
+--logging_steps 5000
+--save_steps 5000
 --evaluation_strategy steps
 --eval_steps 999999999
 --pooler_type avg
@@ -37,7 +37,9 @@ MODEL_NAME=roberta-large
 --temp 0.05
 --seed 1234
 --do_train
+--pad_to_max_length
 
+--fp16
 --load_best_model_at_end
 --metric_for_best_model stsb_spearman
 --do_eval

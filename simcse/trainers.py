@@ -57,6 +57,7 @@ from torch.utils.data.dataset import Dataset
 from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data.sampler import RandomSampler, SequentialSampler
 import cluster_align
+from util import save_result
 
 if is_torch_tpu_available():
     import torch_xla.core.xla_model as xm
@@ -289,7 +290,7 @@ class CLTrainer(Trainer):
                 self._rotate_checkpoints(use_mtime=True)
 
     def train(self, model_path: Optional[str] = None, trial: Union["optuna.Trial", Dict[str, Any]] = None,
-              data_eval=None):
+              eval_data=None, eval_args=None):
         """
         Main training entry point.
 
@@ -556,9 +557,9 @@ class CLTrainer(Trainer):
                 if self.control.should_epoch_stop or self.control.should_training_stop:
                     break
 
-                # todo
-                if data_eval is not None and step % 1000 == 0:
-                    cluster_align.evaluation(self, data_eval)
+                if eval_data is not None and step % (eval_args.eval_per_epochs * 1000) == 0:
+                    eval_result = cluster_align.evaluation(self, eval_data)
+                    save_result(eval_result, eval_args)
 
             self.control = self.callback_handler.on_epoch_end(self.args, self.state, self.control)
             self._maybe_log_save_evaluate(tr_loss, model, trial, epoch)

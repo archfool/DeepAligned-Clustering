@@ -313,35 +313,6 @@ def replace_env_paras(env_paras, args_list):
         return tuple(args_list)
 
 
-def save_result(result, args):
-    if not os.path.exists(args.save_results_path):
-        os.makedirs(args.save_results_path)
-
-    var = [args.dataset, args.method, args.known_cls_ratio, args.labeled_ratio, args.cluster_num_factor, args.seed]
-    names = ['dataset', 'method', 'known_cls_ratio', 'labeled_ratio', 'cluster_num_factor', 'seed']
-    vars_dict = {k: v for k, v in zip(names, var)}
-    results = dict(result, **vars_dict)
-    keys = list(results.keys())
-    values = list(results.values())
-
-    file_name = 'results' + '.csv'
-    results_path = os.path.join(args.save_results_path, file_name)
-
-    if not os.path.exists(results_path):
-        ori = []
-        ori.append(values)
-        df1 = pd.DataFrame(ori, columns=keys)
-        df1.to_csv(results_path, index=False)
-    else:
-        df1 = pd.read_csv(results_path)
-        new = pd.DataFrame(results, index=[1])
-        df1 = df1.append(new, ignore_index=True)
-        df1.to_csv(results_path, index=False)
-    data_diagram = pd.read_csv(results_path)
-
-    print('test_results', data_diagram)
-
-
 if __name__ == '__main__':
 
     print('Data and Parameters Initialization...')
@@ -349,7 +320,8 @@ if __name__ == '__main__':
     # step_1 读取配置参数
     env_paras = {
         'DATASET': 'clinc',
-        'MODEL_NAME': 'roberta-large',
+        # 'MODEL_NAME': 'roberta-large',
+        'MODEL_NAME': 'bert-base-uncased',
     }
     parser = init_model()
     # args = parser.parse_args()
@@ -386,38 +358,36 @@ if __name__ == '__main__':
         data_collator, train_dataset = simcse_train.data_prepare(
             data_args, training_args, model_args, tokenizer, data_args.pre_train_file)
         training_args.do_train = True
-        trainer = CLTrainer(
-            model=base_model,
-            args=training_args,
-            train_dataset=train_dataset if args.pretrain else None,
-            tokenizer=tokenizer,
-            data_collator=data_collator,
-        )
+        # trainer = CLTrainer(
+        #     model=base_model,
+        #     args=training_args,
+        #     train_dataset=train_dataset if args.pretrain else None,
+        #     tokenizer=tokenizer,
+        #     data_collator=data_collator,
+        # )
 
         # step_4 预训练
         # training_args.do_train = True
         if args.pretrain:
             training_args.num_train_epochs = args.num_pretrain_epochs
-            # trainer = CLTrainer(
-            #     model=base_model,
-            #     args=training_args,
-            #     train_dataset=train_dataset if training_args.do_train else None,
-            #     tokenizer=tokenizer,
-            #     data_collator=data_collator,
-            # )
-            trainer.args.num_train_epochs = args.num_pretrain_epochs
+            trainer = CLTrainer(
+                model=base_model,
+                args=training_args,
+                train_dataset=train_dataset if training_args.do_train else None,
+                tokenizer=tokenizer,
+                data_collator=data_collator,
+            )
+            # trainer.args.num_train_epochs = args.num_pretrain_epochs
             trainer.model_args = model_args
 
             # model pre_train
-            train_result = trainer.train(model_path=model_args.model_name_or_path, data_eval=data)
-            # model = copy.deepcopy(trainer.model)
+            train_result = trainer.train(model_path=model_args.model_name_or_path, eval_data=data, eval_args=args)
+            # base_model = copy.deepcopy(trainer.model)
             trainer.save_model()  # Saves the tokenizer too for easy upload
             # todo 进行聚类，剔除低密度的簇，统计符合条件的簇的个数
             # todo 只会在训练DAC之前进行一次簇个数的估计
-            # todo 进行聚类，剔除低密度的簇，统计符合条件的簇的个数
-            # todo 只会在训练DAC之前进行一次簇个数的估计
-            # todo 进行聚类，剔除低密度的簇，统计符合条件的簇的个数
-            # todo 只会在训练DAC之前进行一次簇个数的估计
+        else:
+            trainer = None
 
         # step_5 聚类-训练-对齐
         best_score = 0
@@ -425,9 +395,20 @@ if __name__ == '__main__':
         wait = 0
         centroids = None
 
-        trainer.args.num_train_epochs = 1
+        training_args.num_train_epochs = 1
+        # trainer.args.num_train_epochs = 1
         for epoch in trange(int(args.num_train_epochs), desc="Epoch"):
             print("{}\tEpoch:\t{}".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), epoch))
+            trainer = CLTrainer(
+                model=base_model if trainer is None else trainer.model,
+                args=training_args,
+                train_dataset=None,
+                tokenizer=tokenizer,
+                data_collator=data_collator,
+            )
+            # trainer.args.num_train_epochs = args.num_pretrain_epochs
+            trainer.model_args = model_args
+
             feats, _ = trainer.get_featureEmbd_label(data.train_semi_dataloader)
             feats = feats.cpu().numpy()
             print("\n{}\tBegin KMeans".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
@@ -457,14 +438,14 @@ if __name__ == '__main__':
                 data_args, training_args, model_args, tokenizer, data_args.train_file)
             trainer.train_dataset = train_dataset
 
-            if epoch % args.eval_epochs == 0:
+            train_result = trainer.train()
+            # train_result = trainer.train(model_path=model_args.model_name_or_path)
+
+            if epoch % args.eval_per_epochs == 0:
                 print("=============Begin in_batch Eval=============")
                 result = cluster_align.evaluation(trainer, data)
                 save_result(result, args)
                 print("=============End in_batch Eval=============")
-
-            train_result = trainer.train()
-            # train_result = trainer.train(model_path=model_args.model_name_or_path)
 
 
         trainer.model = best_model

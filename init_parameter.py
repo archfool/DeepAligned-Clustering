@@ -70,7 +70,7 @@ def init_model():
 
     parser.add_argument("--use_CL", action="store_true", help="use Contrastive Learning.")
 
-    parser.add_argument("--eval_epochs", default=10, type=int,
+    parser.add_argument("--eval_per_epochs", default=1, type=int,
                         help="eval model during training per xxx epochs.")
 
     return parser
