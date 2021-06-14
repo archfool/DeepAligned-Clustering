@@ -14,7 +14,7 @@ MODEL_NAME=roberta-large
     --labeled_ratio 0.1
     --wait_patient 20
     --num_pretrain_epochs 10
-    --num_train_epochs 100
+    --num_train_epochs 20
     --seed 1234
     --freeze_bert_parameters
     --pretrain
