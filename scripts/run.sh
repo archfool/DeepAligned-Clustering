@@ -27,7 +27,6 @@ MODEL_NAME=bert-base-uncased
 --output_dir /media/archfool/data/data/my-sup-simcse-${MODEL_NAME}
 --per_device_train_batch_size 32
 --learning_rate 5e-5
---max_seq_length 32
 --logging_steps 5000
 --save_steps 5000
 --evaluation_strategy steps
@@ -39,6 +38,7 @@ MODEL_NAME=bert-base-uncased
 --do_train
 --pad_to_max_length
 
+--max_seq_length 32
 --fp16
 --load_best_model_at_end
 --metric_for_best_model stsb_spearman

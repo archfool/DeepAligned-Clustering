@@ -94,6 +94,7 @@ logger = logging.get_logger(__name__)
 
 class CLTrainer(Trainer):
     def __init__(self, *args, **kwargs):
+        # super().__init__(self, *args, **kwargs)
         super().__init__(*args, **kwargs)
         for name, param in self.model.named_parameters():
             param.requires_grad = False
@@ -160,6 +161,7 @@ class CLTrainer(Trainer):
         self.model.eval()
 
         # total_features = torch.empty((0, args.feat_dim)).cpu()
+        # todo 是否对每种pooling方式都一致？
         total_features = torch.empty((0, self.model.mlp.dense.weight.size()[1])).cpu()
         total_labels = torch.empty(0, dtype=torch.long).cpu()
 

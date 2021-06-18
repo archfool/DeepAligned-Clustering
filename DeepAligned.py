@@ -354,7 +354,9 @@ if __name__ == '__main__':
 
         # step_3 准备数据
         data = Data(args, tokenizer)
+        data_args.max_seq_length = data.args.max_seq_length
         data.corpus_dac2cl_train(data_args.pre_train_file)
+        # todo 后两句顺序是否反了
         data_collator, train_dataset = simcse_train.data_prepare(
             data_args, training_args, model_args, tokenizer, data_args.pre_train_file)
         training_args.do_train = True

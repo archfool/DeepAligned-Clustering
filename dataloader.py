@@ -1,5 +1,5 @@
 from util import *
-
+import pandas as pd
 
 def set_seed(seed):
     random.seed(seed)
@@ -37,6 +37,7 @@ class Data:
 
         self.eval_dataloader = self.get_loader(self.eval_examples, args, 'eval', tokenizer)
         self.test_dataloader = self.get_loader(self.test_examples, args, 'test', tokenizer)
+        self.args = args
 
     # todo load data and change into new format
     def get_examples(self, processor, args, mode='train'):
@@ -143,16 +144,17 @@ class Data:
             for idx in range(len(self.train_ori_examples)):
                 train_labeled_examples[idx].label = labels[idx]
         corpus = []
-        # todo rewrite to speedip
+        # todo rewrite to speed up
+        # 遍历所有标签
         for label in known_label_list:
             example_set = []
+            # 提取当前标签的所有样本
             for example in train_labeled_examples:
                 if example.label == label:
                     example_set.append(example.text_a)
-
             if len(example_set) <= 1:
                 continue
-
+            # 将当前标签的所有样本两两组合构成新样本
             for text_a in example_set:
                 for text_b in example_set:
                     if text_a != text_b:
