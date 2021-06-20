@@ -356,7 +356,6 @@ if __name__ == '__main__':
         data = Data(args, tokenizer)
         data_args.max_seq_length = data.args.max_seq_length
         data.corpus_dac2cl_train(data_args.pre_train_file)
-        # todo 后两句顺序是否反了
         data_collator, train_dataset = simcse_train.data_prepare(
             data_args, training_args, model_args, tokenizer, data_args.pre_train_file)
         training_args.do_train = True
@@ -371,6 +370,9 @@ if __name__ == '__main__':
         # step_4 预训练
         # training_args.do_train = True
         if args.pretrain:
+            # data.corpus_dac2cl_train(data_args.pre_train_file)
+            # data_collator, train_dataset = simcse_train.data_prepare(
+            #     data_args, training_args, model_args, tokenizer, data_args.pre_train_file)
             training_args.num_train_epochs = args.num_pretrain_epochs
             trainer = CLTrainer(
                 model=base_model,
@@ -389,7 +391,9 @@ if __name__ == '__main__':
             # todo 进行聚类，剔除低密度的簇，统计符合条件的簇的个数
             # todo 只会在训练DAC之前进行一次簇个数的估计
         else:
-            trainer = None
+            if os.path.exists(training_args.output_dir):
+                model_args.model_name_or_path = training_args.output_dir
+                base_model, tokenizer = simcse_train.load_model(data_args, training_args, model_args)
 
         # step_5 聚类-训练-对齐
         best_score = 0
@@ -402,7 +406,8 @@ if __name__ == '__main__':
         for epoch in trange(int(args.num_train_epochs), desc="Epoch"):
             print("{}\tEpoch:\t{}".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), epoch))
             trainer = CLTrainer(
-                model=base_model if trainer is None else trainer.model,
+                # model=base_model if trainer is None else trainer.model,
+                model=base_model,
                 args=training_args,
                 train_dataset=None,
                 tokenizer=tokenizer,
@@ -411,7 +416,14 @@ if __name__ == '__main__':
             # trainer.args.num_train_epochs = args.num_pretrain_epochs
             trainer.model_args = model_args
 
+            # compare the feats with the output of train model(models.py 171 z1, z2 = pooler_output[:, 0], pooler_output[:, 1])
             feats, _ = trainer.get_featureEmbd_label(data.train_semi_dataloader)
+            # todo tmp to_del
+            if True:
+                data_collator, train_dataset = simcse_train.data_prepare(
+                    data_args, training_args, model_args, tokenizer, data_args.train_file)
+                trainer.train_dataset = train_dataset
+                train_result = trainer.train()
             feats = feats.cpu().numpy()
             print("\n{}\tBegin KMeans".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
             km = KMeans(n_clusters=data.num_labels).fit(feats)
@@ -448,7 +460,6 @@ if __name__ == '__main__':
                 result = cluster_align.evaluation(trainer, data)
                 save_result(result, args)
                 print("=============End in_batch Eval=============")
-
 
         trainer.model = best_model
         trainer.save_model()

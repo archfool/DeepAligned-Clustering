@@ -94,7 +94,6 @@ logger = logging.get_logger(__name__)
 
 class CLTrainer(Trainer):
     def __init__(self, *args, **kwargs):
-        # super().__init__(self, *args, **kwargs)
         super().__init__(*args, **kwargs)
         for name, param in self.model.named_parameters():
             param.requires_grad = False

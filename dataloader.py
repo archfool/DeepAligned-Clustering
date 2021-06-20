@@ -166,7 +166,7 @@ class Data:
             corpus = corpus + pre_corpus[1:] * 10
         random.shuffle(corpus)
         if pre_train_file is not None:
-            corpus = corpus[:int(len(corpus)/10)]
+            corpus = corpus[:int(len(corpus)*self.args.cl_sample_ratio)]
         corpus = ["sent0\tsent1"] + corpus
 
         with open(ouput_corpus_path, 'w', encoding='utf-8') as f:

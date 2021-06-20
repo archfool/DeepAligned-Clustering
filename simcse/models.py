@@ -16,6 +16,7 @@ from transformers.file_utils import (
 )
 from transformers.modeling_outputs import SequenceClassifierOutput, BaseModelOutputWithPoolingAndCrossAttentions
 
+
 class MLPLayer(nn.Module):
     """
     Head for getting sentence representations over RoBERTa/BERT's CLS representation.
@@ -31,6 +32,7 @@ class MLPLayer(nn.Module):
         x = self.activation(x)
 
         return x
+
 
 class Similarity(nn.Module):
     """
@@ -55,10 +57,12 @@ class Pooler(nn.Module):
     'avg_top2': average of the last two layers.
     'avg_first_last': average of the first and the last layers.
     """
+
     def __init__(self, pooler_type):
         super().__init__()
         self.pooler_type = pooler_type
-        assert self.pooler_type in ["cls", "cls_before_pooler", "avg", "avg_top2", "avg_first_last"], "unrecognized pooling type %s" % self.pooler_type
+        assert self.pooler_type in ["cls", "cls_before_pooler", "avg", "avg_top2",
+                                    "avg_first_last"], "unrecognized pooling type %s" % self.pooler_type
 
     def forward(self, attention_mask, outputs):
         last_hidden = outputs.last_hidden_state
@@ -72,12 +76,14 @@ class Pooler(nn.Module):
         elif self.pooler_type == "avg_first_last":
             first_hidden = hidden_states[0]
             last_hidden = hidden_states[-1]
-            pooled_result = ((first_hidden + last_hidden) / 2.0 * attention_mask.unsqueeze(-1)).sum(1) / attention_mask.sum(-1).unsqueeze(-1)
+            pooled_result = ((first_hidden + last_hidden) / 2.0 * attention_mask.unsqueeze(-1)).sum(
+                1) / attention_mask.sum(-1).unsqueeze(-1)
             return pooled_result
         elif self.pooler_type == "avg_top2":
             second_last_hidden = hidden_states[-2]
             last_hidden = hidden_states[-1]
-            pooled_result = ((last_hidden + second_last_hidden) / 2.0 * attention_mask.unsqueeze(-1)).sum(1) / attention_mask.sum(-1).unsqueeze(-1)
+            pooled_result = ((last_hidden + second_last_hidden) / 2.0 * attention_mask.unsqueeze(-1)).sum(
+                1) / attention_mask.sum(-1).unsqueeze(-1)
             return pooled_result
         else:
             raise NotImplementedError
@@ -93,21 +99,22 @@ def cl_init(cls, config):
     cls.sim = Similarity(temp=cls.model_args.temp)
     cls.init_weights()
 
+
 def cl_forward(cls,
-    encoder,
-    input_ids=None,
-    attention_mask=None,
-    token_type_ids=None,
-    position_ids=None,
-    head_mask=None,
-    inputs_embeds=None,
-    labels=None,
-    output_attentions=None,
-    output_hidden_states=None,
-    return_dict=None,
-    mlm_input_ids=None,
-    mlm_labels=None,
-):
+               encoder,
+               input_ids=None,
+               attention_mask=None,
+               token_type_ids=None,
+               position_ids=None,
+               head_mask=None,
+               inputs_embeds=None,
+               labels=None,
+               output_attentions=None,
+               output_hidden_states=None,
+               return_dict=None,
+               mlm_input_ids=None,
+               mlm_labels=None,
+               ):
     return_dict = return_dict if return_dict is not None else cls.config.use_return_dict
     ori_input_ids = input_ids
     batch_size = input_ids.size(0)
@@ -117,10 +124,10 @@ def cl_forward(cls,
 
     mlm_outputs = None
     # Flatten input for encoding
-    input_ids = input_ids.view((-1, input_ids.size(-1))) # (bs * num_sent, len)
-    attention_mask = attention_mask.view((-1, attention_mask.size(-1))) # (bs * num_sent len)
+    input_ids = input_ids.view((-1, input_ids.size(-1)))  # (bs * num_sent, len)
+    attention_mask = attention_mask.view((-1, attention_mask.size(-1)))  # (bs * num_sent len)
     if token_type_ids is not None:
-        token_type_ids = token_type_ids.view((-1, token_type_ids.size(-1))) # (bs * num_sent, len)
+        token_type_ids = token_type_ids.view((-1, token_type_ids.size(-1)))  # (bs * num_sent, len)
 
     # Get raw embeddings
     outputs = encoder(
@@ -152,7 +159,7 @@ def cl_forward(cls,
 
     # Pooling
     pooler_output = cls.pooler(attention_mask, outputs)
-    pooler_output = pooler_output.view((batch_size, num_sent, pooler_output.size(-1))) # (bs, num_sent, hidden)
+    pooler_output = pooler_output.view((batch_size, num_sent, pooler_output.size(-1)))  # (bs, num_sent, hidden)
 
     # If using "cls", we add an extra MLP layer
     # (same as BERT's original implementation) over the representation.
@@ -161,7 +168,7 @@ def cl_forward(cls,
 
     # todo embd representation后接了0层（不考虑MLM loss的情况下）
     # Separate representation
-    z1, z2 = pooler_output[:,0], pooler_output[:,1]
+    z1, z2 = pooler_output[:, 0], pooler_output[:, 1]
 
     # Hard negative
     if num_sent == 3:
@@ -207,7 +214,8 @@ def cl_forward(cls,
         # Note that weights are actually logits of weights
         z3_weight = cls.model_args.hard_negative_weight
         weights = torch.tensor(
-            [[0.0] * (cos_sim.size(-1) - z1_z3_cos.size(-1)) + [0.0] * i + [z3_weight] + [0.0] * (z1_z3_cos.size(-1) - i - 1) for i in range(z1_z3_cos.size(-1))]
+            [[0.0] * (cos_sim.size(-1) - z1_z3_cos.size(-1)) + [0.0] * i + [z3_weight] + [0.0] * (
+                    z1_z3_cos.size(-1) - i - 1) for i in range(z1_z3_cos.size(-1))]
         ).to(cls.device)
         cos_sim = cos_sim + weights
 
@@ -232,20 +240,19 @@ def cl_forward(cls,
 
 
 def sentemb_forward(
-    cls,
-    encoder,
-    input_ids=None,
-    attention_mask=None,
-    token_type_ids=None,
-    position_ids=None,
-    head_mask=None,
-    inputs_embeds=None,
-    labels=None,
-    output_attentions=None,
-    output_hidden_states=None,
-    return_dict=None,
+        cls,
+        encoder,
+        input_ids=None,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        head_mask=None,
+        inputs_embeds=None,
+        labels=None,
+        output_attentions=None,
+        output_hidden_states=None,
+        return_dict=None,
 ):
-
     return_dict = return_dict if return_dict is not None else cls.config.use_return_dict
 
     outputs = encoder(
@@ -295,50 +302,51 @@ class BertForCL(BertPreTrainedModel):
             self.init_weights()
 
     def forward(self,
-        input_ids=None,
-        attention_mask=None,
-        token_type_ids=None,
-        position_ids=None,
-        head_mask=None,
-        inputs_embeds=None,
-        labels=None,
-        output_attentions=None,
-        output_hidden_states=None,
-        return_dict=None,
-        sent_emb=False,
-        mlm_input_ids=None,
-        mlm_labels=None,
-    ):
+                input_ids=None,
+                attention_mask=None,
+                token_type_ids=None,
+                position_ids=None,
+                head_mask=None,
+                inputs_embeds=None,
+                labels=None,
+                output_attentions=None,
+                output_hidden_states=None,
+                return_dict=None,
+                sent_emb=False,
+                mlm_input_ids=None,
+                mlm_labels=None,
+                ):
         # todo sent_emb在infer时取值为true，在train时取值为false
         if sent_emb:
-            return sentemb_forward(self, self.bert,
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                token_type_ids=token_type_ids,
-                position_ids=position_ids,
-                head_mask=head_mask,
-                inputs_embeds=inputs_embeds,
-                labels=labels,
-                output_attentions=output_attentions,
-                output_hidden_states=output_hidden_states,
-                return_dict=return_dict,
-            )
+            output = sentemb_forward(self, self.bert,
+                                     input_ids=input_ids,
+                                     attention_mask=attention_mask,
+                                     token_type_ids=token_type_ids,
+                                     position_ids=position_ids,
+                                     head_mask=head_mask,
+                                     inputs_embeds=inputs_embeds,
+                                     labels=labels,
+                                     output_attentions=output_attentions,
+                                     output_hidden_states=output_hidden_states,
+                                     return_dict=return_dict,
+                                     )
+            return output
         else:
-            return cl_forward(self, self.bert,
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                token_type_ids=token_type_ids,
-                position_ids=position_ids,
-                head_mask=head_mask,
-                inputs_embeds=inputs_embeds,
-                labels=labels,
-                output_attentions=output_attentions,
-                output_hidden_states=output_hidden_states,
-                return_dict=return_dict,
-                mlm_input_ids=mlm_input_ids,
-                mlm_labels=mlm_labels,
-            )
-
+            output = cl_forward(self, self.bert,
+                                input_ids=input_ids,
+                                attention_mask=attention_mask,
+                                token_type_ids=token_type_ids,
+                                position_ids=position_ids,
+                                head_mask=head_mask,
+                                inputs_embeds=inputs_embeds,
+                                labels=labels,
+                                output_attentions=output_attentions,
+                                output_hidden_states=output_hidden_states,
+                                return_dict=return_dict,
+                                mlm_input_ids=mlm_input_ids,
+                                mlm_labels=mlm_labels,
+                                )
+            return output
 
 
 class RobertaForCL(RobertaPreTrainedModel):
@@ -362,45 +370,45 @@ class RobertaForCL(RobertaPreTrainedModel):
             self.init_weights()
 
     def forward(self,
-        input_ids=None,
-        attention_mask=None,
-        token_type_ids=None,
-        position_ids=None,
-        head_mask=None,
-        inputs_embeds=None,
-        labels=None,
-        output_attentions=None,
-        output_hidden_states=None,
-        return_dict=None,
-        sent_emb=False,
-        mlm_input_ids=None,
-        mlm_labels=None,
-    ):
+                input_ids=None,
+                attention_mask=None,
+                token_type_ids=None,
+                position_ids=None,
+                head_mask=None,
+                inputs_embeds=None,
+                labels=None,
+                output_attentions=None,
+                output_hidden_states=None,
+                return_dict=None,
+                sent_emb=False,
+                mlm_input_ids=None,
+                mlm_labels=None,
+                ):
         if sent_emb:
             return sentemb_forward(self, self.roberta,
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                token_type_ids=token_type_ids,
-                position_ids=position_ids,
-                head_mask=head_mask,
-                inputs_embeds=inputs_embeds,
-                labels=labels,
-                output_attentions=output_attentions,
-                output_hidden_states=output_hidden_states,
-                return_dict=return_dict,
-            )
+                                   input_ids=input_ids,
+                                   attention_mask=attention_mask,
+                                   token_type_ids=token_type_ids,
+                                   position_ids=position_ids,
+                                   head_mask=head_mask,
+                                   inputs_embeds=inputs_embeds,
+                                   labels=labels,
+                                   output_attentions=output_attentions,
+                                   output_hidden_states=output_hidden_states,
+                                   return_dict=return_dict,
+                                   )
         else:
             return cl_forward(self, self.roberta,
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                token_type_ids=token_type_ids,
-                position_ids=position_ids,
-                head_mask=head_mask,
-                inputs_embeds=inputs_embeds,
-                labels=labels,
-                output_attentions=output_attentions,
-                output_hidden_states=output_hidden_states,
-                return_dict=return_dict,
-                mlm_input_ids=mlm_input_ids,
-                mlm_labels=mlm_labels,
-            )
+                              input_ids=input_ids,
+                              attention_mask=attention_mask,
+                              token_type_ids=token_type_ids,
+                              position_ids=position_ids,
+                              head_mask=head_mask,
+                              inputs_embeds=inputs_embeds,
+                              labels=labels,
+                              output_attentions=output_attentions,
+                              output_hidden_states=output_hidden_states,
+                              return_dict=return_dict,
+                              mlm_input_ids=mlm_input_ids,
+                              mlm_labels=mlm_labels,
+                              )

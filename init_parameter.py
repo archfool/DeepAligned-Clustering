@@ -73,4 +73,7 @@ def init_model():
     parser.add_argument("--eval_per_epochs", default=1, type=int,
                         help="eval model during training per xxx epochs.")
 
+    parser.add_argument("--cl_sample_ratio", default=1.0, type=float,
+                        help="The sampling rate for cl of clustering.")
+
     return parser

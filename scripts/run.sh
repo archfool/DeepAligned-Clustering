@@ -13,14 +13,14 @@ MODEL_NAME=bert-base-uncased
     --cluster_num_factor 1.0
     --labeled_ratio 0.1
     --wait_patient 20
-    --num_pretrain_epochs 10
+    --num_pretrain_epochs 1
     --num_train_epochs 20
     --seed 1234
     --freeze_bert_parameters
-    --pretrain
     --save_model
     --use_CL
     --eval_per_epochs 1
+    --cl_sample_ratio 0.0001
 --model_name_or_path /media/archfool/data/data/huggingface/${MODEL_NAME}
 --pre_train_file /media/archfool/data/data/datasets-for-clustering/${DATASET}/pre_train_cl.tsv.csv
 --train_file /media/archfool/data/data/datasets-for-clustering/${DATASET}/train_cl.tsv.csv
@@ -37,12 +37,19 @@ MODEL_NAME=bert-base-uncased
 --seed 1234
 --do_train
 --pad_to_max_length
+--fp16
+
+    --pretrain
 
 --max_seq_length 32
---fp16
 --load_best_model_at_end
 --metric_for_best_model stsb_spearman
 --do_eval
+
+
+
+
+
 
 
     --data_dir /data/nfs/ruanzhihao322/data/DeepAlignedClustering/
