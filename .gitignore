@@ -16,6 +16,7 @@ __pycache__/
 .idea/*
 
 tmp
+FileLock4WindowsBUG
 
 outputs/
 data/*

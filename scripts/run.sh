@@ -37,7 +37,6 @@ MODEL_NAME=bert-base-uncased
 --seed 1234
 --do_train
 --pad_to_max_length
---fp16
 
     --pretrain
 
@@ -45,6 +44,7 @@ MODEL_NAME=bert-base-uncased
 --load_best_model_at_end
 --metric_for_best_model stsb_spearman
 --do_eval
+--fp16
 
 
 

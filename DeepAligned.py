@@ -24,7 +24,7 @@ class ModelManager:
 
     def __init__(self, args, data, pretrained_model=None):
 
-        # todo 加载模型
+        # 加载模型
         if pretrained_model is None:
             print("load model from a saved bin file.")
             pretrained_model = BertForModel.from_pretrained(args.bert_model, cache_dir="", num_labels=data.n_known_cls)
@@ -38,29 +38,29 @@ class ModelManager:
         os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        # todo tmp add
+        # tmp add
         self.pretrained_model.to(self.device)
 
-        # todo 当cluster_num_factor<=1时，不会执行低质簇剔除的策略
+        # 当cluster_num_factor<=1时，不会执行低质簇剔除的策略
         if args.cluster_num_factor > 1:
-            # todo 进行聚类，剔除低密度的簇，统计符合条件的簇的个数
-            # todo 只会在训练DAC之前进行一次簇个数的估计
+            # 进行聚类，剔除低密度的簇，统计符合条件的簇的个数
+            # 只会在训练DAC之前进行一次簇个数的估计
             self.num_labels = self.predict_k(args, data)
         else:
             self.num_labels = data.num_labels
 
-        # todo 根据估计出的簇个数，调整label个数，重置预训练模型
+        # 根据估计出的簇个数，调整label个数，重置预训练模型
         self.model = BertForModel.from_pretrained(args.bert_model, cache_dir="", num_labels=self.num_labels)
 
-        # todo 加载self.pretrained_model的模型参数至self.model，除了分类层
+        # 加载self.pretrained_model的模型参数至self.model，除了分类层
         if args.pretrain:
             self.load_pretrained_model(args)
 
-        # todo 冻结除了12层和pooler层之外的所有参数
+        # 冻结除了12层和pooler层之外的所有参数
         if args.freeze_bert_parameters:
             self.freeze_parameters(self.model)
 
-        # todo tmp del
+        # tmp del
         self.model.to(self.device)
 
         num_train_examples = len(data.train_labeled_examples) + len(data.train_unlabeled_examples)
@@ -77,7 +77,7 @@ class ModelManager:
 
     def get_features_labels(self, dataloader, model, args):
 
-        # todo debug add change device
+        # debug add change device
         # model.to(self.device)
         model.eval()
         total_features = torch.empty((0, args.feat_dim)).to(self.device)
@@ -105,7 +105,7 @@ class ModelManager:
         y_pred = km.labels_
 
         pred_label_list = np.unique(y_pred)
-        # todo 簇的筛选门限值
+        # 簇的筛选门限值
         drop_out = len(feats) / data.num_labels
         print('drop threshold:', drop_out)
 
@@ -123,7 +123,7 @@ class ModelManager:
     def get_optimizer(self, args):
         param_optimizer = list(self.model.named_parameters())
         no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
-        # todo 不知道weight_decay是干吗用的
+        # 不知道weight_decay是干吗用的
         optimizer_grouped_parameters = [
             {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)], 'weight_decay': 0.01},
             {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
@@ -210,7 +210,7 @@ class ModelManager:
             score = metrics.silhouette_score(feats, km.labels_)
             print('score(the bigger the better)', score)
 
-            # todo 判定early_stop
+            # 判定early_stop
             if score > best_score:
                 best_model = copy.deepcopy(self.model)
                 wait = 0
@@ -221,7 +221,7 @@ class ModelManager:
                     self.model = best_model
                     break
 
-            # todo 生成伪标签，更新旧标签为新伪标签
+            # 生成伪标签，更新旧标签为新伪标签
             pseudo_labels = self.alignment(km, args)
             train_dataloader = self.update_pseudo_labels(pseudo_labels, args, data)
 
@@ -306,6 +306,7 @@ def replace_env_paras(env_paras, args_list):
             if isinstance(args.__getattribute__(key), str):
                 for k, v in env_paras.items():
                     args.__setattr__(key, str.replace(args.__getattribute__(key), u"${" + k + u"}", v))
+                    args.__setattr__(key, str.replace(args.__getattribute__(key), k, v))
             print(key, args.__getattribute__(key))
     if len(args_list) == 1:
         return args_list[0]
@@ -323,18 +324,26 @@ if __name__ == '__main__':
         # 'MODEL_NAME': 'roberta-large',
         'MODEL_NAME': 'bert-base-uncased',
     }
+    if os.path.exists("D:"):
+        env_paras.setdefault(r"/media/archfool/data/data/", u"D:\\data\\")
+        env_paras.setdefault(u"/", u"\\")
+
     parser = init_model()
     # args = parser.parse_args()
     args, unknown = parser.parse_known_args()
     if os.path.exists("D:"):
+        pass
         # args.bert_model = r'E:\data\huggingface\bert-base-uncased'
         # args.bert_model = r'E:\data\my-unsup-simcse-bert-base-uncased'
-        args.bert_model = r'E:\data\my-sup-simcse-bert-base-uncased'
+        # args.bert_model = r'E:\data\my-sup-simcse-bert-base-uncased'
         # args.bert_model = r'E:\data\huggingface\unsup-simcse-bert-base-uncased'
-        args.data_dir = 'data'
-        args.labeled_ratio = 0.4
-        args.num_pretrain_epochs = 2
-        args.num_train_epochs = 2
+        # args.data_dir = 'data'
+        # args = replace_env_paras({r"/media/archfool/data/data/": u"D:\\data\\", u"/": u"\\"},
+        #                          [args])
+        # args.labeled_ratio = 0.4
+        # args.num_pretrain_epochs = 2
+        # args.num_train_epochs = 2
+
     # elif os.path.exists("/media/archfool/"):
     #     args.bert_model = r'/media/archfool/data/data/huggingface/unsup-simcse-bert-base-uncased'
     # args.bert_model = r'/media/archfool/data/data/huggingface/bert-base-uncased'
@@ -343,6 +352,10 @@ if __name__ == '__main__':
     if args.use_CL:
         data_args, training_args, model_args = simcse_train.load_paras()
         data_args, training_args, model_args = replace_env_paras(env_paras, [data_args, training_args, model_args])
+        # if os.path.exists("D:"):
+        #     data_args, training_args, model_args = replace_env_paras(
+        #         {r"/media/archfool/data/data/": u"D:\\data\\", u"/": u"\\"},
+        #         [data_args, training_args, model_args])
 
         # Set logging before initializing model.
         simcse_train.set_log(data_args, training_args, model_args, logging)
@@ -388,8 +401,8 @@ if __name__ == '__main__':
             train_result = trainer.train(model_path=model_args.model_name_or_path, eval_data=data, eval_args=args)
             # base_model = copy.deepcopy(trainer.model)
             trainer.save_model()  # Saves the tokenizer too for easy upload
-            # todo 进行聚类，剔除低密度的簇，统计符合条件的簇的个数
-            # todo 只会在训练DAC之前进行一次簇个数的估计
+            # 进行聚类，剔除低密度的簇，统计符合条件的簇的个数
+            # 只会在训练DAC之前进行一次簇个数的估计
         else:
             if os.path.exists(training_args.output_dir):
                 model_args.model_name_or_path = training_args.output_dir
@@ -419,7 +432,7 @@ if __name__ == '__main__':
             # compare the feats with the output of train model(models.py 171 z1, z2 = pooler_output[:, 0], pooler_output[:, 1])
             feats, _ = trainer.get_featureEmbd_label(data.train_semi_dataloader)
             # todo tmp to_del
-            if True:
+            if False:
                 data_collator, train_dataset = simcse_train.data_prepare(
                     data_args, training_args, model_args, tokenizer, data_args.train_file)
                 trainer.train_dataset = train_dataset

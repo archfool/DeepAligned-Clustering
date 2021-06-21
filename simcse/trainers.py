@@ -188,7 +188,8 @@ class CLTrainer(Trainer):
 
             total_features = torch.cat((total_features, pooler_output.cpu()))
             total_labels = torch.cat((total_labels, label_ids.cpu()))
-
+            # todo to del break
+            # break
         return total_features, total_labels
 
     def _save_checkpoint(self, model, trial, metrics=None):
