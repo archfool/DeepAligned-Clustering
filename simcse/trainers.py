@@ -559,7 +559,7 @@ class CLTrainer(Trainer):
                 if self.control.should_epoch_stop or self.control.should_training_stop:
                     break
 
-                if eval_data is not None and step % (eval_args.eval_per_epochs * 1000) == 0:
+                if eval_data is not None and self.state.global_step % (eval_args.eval_per_epochs * 1000) == 0:
                     eval_result = cluster_align.evaluation(self, eval_data)
                     save_result(eval_result, eval_args)
 
