@@ -331,22 +331,6 @@ if __name__ == '__main__':
     parser = init_model()
     # args = parser.parse_args()
     args, unknown = parser.parse_known_args()
-    if os.path.exists("D:"):
-        pass
-        # args.bert_model = r'E:\data\huggingface\bert-base-uncased'
-        # args.bert_model = r'E:\data\my-unsup-simcse-bert-base-uncased'
-        # args.bert_model = r'E:\data\my-sup-simcse-bert-base-uncased'
-        # args.bert_model = r'E:\data\huggingface\unsup-simcse-bert-base-uncased'
-        # args.data_dir = 'data'
-        # args = replace_env_paras({r"/media/archfool/data/data/": u"D:\\data\\", u"/": u"\\"},
-        #                          [args])
-        # args.labeled_ratio = 0.4
-        # args.num_pretrain_epochs = 2
-        # args.num_train_epochs = 2
-
-    # elif os.path.exists("/media/archfool/"):
-    #     args.bert_model = r'/media/archfool/data/data/huggingface/unsup-simcse-bert-base-uncased'
-    # args.bert_model = r'/media/archfool/data/data/huggingface/bert-base-uncased'
     args = replace_env_paras(env_paras, [args])
 
     if args.use_CL:
@@ -456,7 +440,7 @@ if __name__ == '__main__':
                     trainer.model = best_model
                     break
 
-            # todo 生成伪标签，更新旧标签/vector为新伪标签/vector，保存为新的语料文本文件
+            # 生成伪标签，更新旧标签/vector为新伪标签/vector，保存为新的语料文本文件
             centroids, pseudo_labels = cluster_align.alignment(
                 data.num_labels, centroids, km, trainer.model.mlp.dense.weight.size()[1], trainer.args.device)
             data.corpus_dac2cl_train(data_args.train_file, pseudo_labels, data_args.pre_train_file)

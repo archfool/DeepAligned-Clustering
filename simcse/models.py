@@ -129,6 +129,11 @@ def cl_forward(cls,
     if token_type_ids is not None:
         token_type_ids = token_type_ids.view((-1, token_type_ids.size(-1)))  # (bs * num_sent, len)
 
+    # todo to del
+    if False:
+        encoder.eval()
+        cls.pooler.eval()
+
     # Get raw embeddings
     outputs = encoder(
         input_ids,
@@ -166,7 +171,7 @@ def cl_forward(cls,
     if cls.pooler_type == "cls":
         pooler_output = cls.mlp(pooler_output)
 
-    # todo embd representation后接了0层（不考虑MLM loss的情况下）
+    # embd representation后接了0层（不考虑MLM loss的情况下）
     # Separate representation
     z1, z2 = pooler_output[:, 0], pooler_output[:, 1]
 
@@ -316,7 +321,7 @@ class BertForCL(BertPreTrainedModel):
                 mlm_input_ids=None,
                 mlm_labels=None,
                 ):
-        # todo sent_emb在infer时取值为true，在train时取值为false
+        # sent_emb在infer时取值为true，在train时取值为false
         if sent_emb:
             output = sentemb_forward(self, self.bert,
                                      input_ids=input_ids,

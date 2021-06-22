@@ -20,8 +20,7 @@ MODEL_NAME=bert-base-uncased
     --save_model
     --use_CL
     --eval_per_epochs 1
-    --cl_sample_ratio 0.001
-    --pretrain
+    --cl_sample_ratio 0.2
 --model_name_or_path /media/archfool/data/data/huggingface/${MODEL_NAME}
 --pre_train_file /media/archfool/data/data/datasets-for-clustering/${DATASET}/pre_train_cl.tsv.csv
 --train_file /media/archfool/data/data/datasets-for-clustering/${DATASET}/train_cl.tsv.csv
@@ -39,7 +38,7 @@ MODEL_NAME=bert-base-uncased
 --do_train
 --pad_to_max_length
 
-
+    --pretrain
 --max_seq_length 32
 --load_best_model_at_end
 --metric_for_best_model stsb_spearman

@@ -1,6 +1,7 @@
 from util import *
 import pandas as pd
 
+
 def set_seed(seed):
     random.seed(seed)
     np.random.seed(seed)
@@ -16,14 +17,14 @@ class Data:
 
         processor = DatasetProcessor()
         self.data_dir = os.path.join(args.data_dir, args.dataset)
-        # todo get all_label_list, generate known_label_list(n_known_cls), cal num_labels.
+        # get all_label_list, generate known_label_list(n_known_cls), cal num_labels.
         self.all_label_list = processor.get_labels(self.data_dir)
         self.n_known_cls = round(len(self.all_label_list) * args.known_cls_ratio)
         self.known_label_list = list(np.random.choice(np.array(self.all_label_list), self.n_known_cls, replace=False))
         self.num_labels = int(len(self.all_label_list) * args.cluster_num_factor)
 
-        self.train_labeled_examples, self.train_unlabeled_examples, self.train_ori_examples = self.get_examples(
-            processor, args, 'train')
+        self.train_labeled_examples, self.train_unlabeled_examples = self.get_examples(processor, args, 'train')
+        self.train_ori_examples = self.train_labeled_examples + self.train_unlabeled_examples
         print('num_labeled_samples', len(self.train_labeled_examples))
         print('num_unlabeled_samples', len(self.train_unlabeled_examples))
         self.eval_examples = self.get_examples(processor, args, 'eval')
@@ -39,7 +40,7 @@ class Data:
         self.test_dataloader = self.get_loader(self.test_examples, args, 'test', tokenizer)
         self.args = args
 
-    # todo load data and change into new format
+    # load data and change into new format
     def get_examples(self, processor, args, mode='train'):
         ori_examples = processor.get_examples(self.data_dir, mode)
 
@@ -47,20 +48,20 @@ class Data:
             train_labels = np.array([example.label for example in ori_examples])
             train_labeled_ids = []
 
-            # todo iter for every know_label, random choose a ratio of the corpus tobe labeled, and record their idx
+            # iter for every know_label, random choose a ratio of the corpus tobe labeled, and record their idx
             for label in self.known_label_list:
                 num = round(len(train_labels[train_labels == label]) * args.labeled_ratio)
                 pos = list(np.where(train_labels == label)[0])
                 train_labeled_ids.extend(random.sample(pos, num))
 
-            train_labeled_examples, train_unlabeled_examples, train_all_examples = [], [], []
+            train_labeled_examples, train_unlabeled_examples = [], []
             for idx, example in enumerate(ori_examples):
                 if idx in train_labeled_ids:
                     train_labeled_examples.append(example)
                 else:
                     train_unlabeled_examples.append(example)
 
-            return train_labeled_examples, train_unlabeled_examples, ori_examples
+            return train_labeled_examples, train_unlabeled_examples
 
         elif mode == 'eval':
             eval_examples = []
@@ -74,7 +75,7 @@ class Data:
 
         return examples
 
-    # todo convert corpus to ids
+    # convert corpus to ids
     def get_semi(self, labeled_examples, unlabeled_examples, args, tokenizer=None):
 
         if tokenizer is None:
@@ -100,7 +101,7 @@ class Data:
         semi_label_ids = torch.cat([labeled_label_ids, unlabeled_label_ids])
         return semi_input_ids, semi_input_mask, semi_segment_ids, semi_label_ids
 
-    # todo push corpus into loader
+    # push corpus into loader
     def get_semi_loader(self, semi_input_ids, semi_input_mask, semi_segment_ids, semi_label_ids, args):
         semi_data = TensorDataset(semi_input_ids, semi_input_mask, semi_segment_ids, semi_label_ids)
         semi_sampler = SequentialSampler(semi_data)
@@ -108,7 +109,7 @@ class Data:
 
         return semi_dataloader
 
-    # todo convert corpus to ids and push into loader
+    # convert corpus to ids and push into loader
     def get_loader(self, examples, args, mode='train', tokenizer=None):
         if tokenizer is None:
             tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=True)
@@ -163,10 +164,10 @@ class Data:
         if pre_train_file is not None:
             with open(pre_train_file, "r", encoding="utf-8") as f:
                 pre_corpus = f.read().split("\n")
-            corpus = corpus + pre_corpus[1:] * 10
+            corpus = corpus + pre_corpus[1:] * 2
         random.shuffle(corpus)
         if pre_train_file is not None:
-            corpus = corpus[:int(len(corpus)*self.args.cl_sample_ratio)]
+            corpus = corpus[:int(len(corpus) * self.args.cl_sample_ratio)]
         corpus = ["sent0\tsent1"] + corpus
 
         with open(ouput_corpus_path, 'w', encoding='utf-8') as f:
@@ -235,7 +236,7 @@ class DataProcessor(object):
 
 class DatasetProcessor(DataProcessor):
 
-    # todo corpus should be saved into 3 files, and named by:train, dev, test
+    # corpus should be saved into 3 files, and named by:train, dev, test
     def get_examples(self, data_dir, mode):
         if mode == 'train':
             return self._create_examples(
