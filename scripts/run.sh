@@ -26,7 +26,7 @@ MODEL_NAME=bert-base-uncased
 --pre_train_file /media/archfool/data/data/datasets-for-clustering/${DATASET}/pre_train_cl.tsv.csv
 --train_file /media/archfool/data/data/datasets-for-clustering/${DATASET}/train_cl.tsv.csv
 --output_dir /media/archfool/data/data/my-sup-simcse-${MODEL_NAME}
---per_device_train_batch_size 32
+--per_device_train_batch_size 16
 --learning_rate 5e-5
 --logging_steps 5000
 --save_steps 5000
