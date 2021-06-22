@@ -429,7 +429,6 @@ if __name__ == '__main__':
             # trainer.args.num_train_epochs = args.num_pretrain_epochs
             trainer.model_args = model_args
 
-            # compare the feats with the output of train model(models.py 171 z1, z2 = pooler_output[:, 0], pooler_output[:, 1])
             feats, _ = trainer.get_featureEmbd_label(data.train_semi_dataloader)
             # todo tmp to del
             if False:
