@@ -431,7 +431,7 @@ if __name__ == '__main__':
 
             # compare the feats with the output of train model(models.py 171 z1, z2 = pooler_output[:, 0], pooler_output[:, 1])
             feats, _ = trainer.get_featureEmbd_label(data.train_semi_dataloader)
-            # todo tmp to_del
+            # todo tmp to del
             if False:
                 data_collator, train_dataset = simcse_train.data_prepare(
                     data_args, training_args, model_args, tokenizer, data_args.train_file)
