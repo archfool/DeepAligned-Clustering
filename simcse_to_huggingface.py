@@ -1,3 +1,5 @@
+# -*- coding: UTF-8 -*-
+
 """
 Convert SimCSE's checkpoints to Huggingface style.
 """

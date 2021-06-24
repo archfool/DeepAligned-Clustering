@@ -1,3 +1,5 @@
+# -*- coding: UTF-8 -*-
+
 from model import *
 from init_parameter import *
 from dataloader import *
@@ -327,6 +329,8 @@ if __name__ == '__main__':
     if os.path.exists("D:"):
         env_paras.setdefault(r"/media/archfool/data/data/", u"D:\\data\\")
         env_paras.setdefault(u"/", u"\\")
+    elif os.path.exists("/workspace/bert"):
+        env_paras.setdefault(r"/media/archfool/data/data/", u"/workspace/bert/tmp_workspace/data/")
 
     parser = init_model()
     # args = parser.parse_args()

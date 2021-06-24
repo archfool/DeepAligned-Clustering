@@ -3,7 +3,6 @@
 DATASET=clinc
 MODEL_NAME=bert-base-uncased
 #MODEL_NAME=roberta-large
-
     --data_dir /media/archfool/data/data/datasets-for-clustering
     --save_results_path /media/archfool/data/data/my-sup-simcse-${MODEL_NAME}/${DATASET}
     --bert_model /media/archfool/data/data/huggingface/${MODEL_NAME}
@@ -27,8 +26,8 @@ MODEL_NAME=bert-base-uncased
 --output_dir /media/archfool/data/data/my-sup-simcse-${MODEL_NAME}
 --per_device_train_batch_size 16
 --learning_rate 5e-5
---logging_steps 5000
---save_steps 5000
+--logging_steps 10000
+--save_steps 10000
 --evaluation_strategy steps
 --eval_steps 999999999
 --pooler_type avg

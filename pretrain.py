@@ -1,3 +1,5 @@
+# -*- coding: UTF-8 -*-
+
 from util import *
 from model import *
 from dataloader import *
