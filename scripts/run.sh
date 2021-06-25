@@ -4,7 +4,7 @@ DATASET=clinc
 MODEL_NAME=bert-base-uncased
 #MODEL_NAME=roberta-large
     --data_dir /media/archfool/data/data/datasets-for-clustering
-    --save_results_path /media/archfool/data/data/my-sup-simcse-${MODEL_NAME}/${DATASET}
+    --save_results_path /media/archfool/data/data/my-sup-simcse-${MODEL_NAME}/result_log
     --bert_model /media/archfool/data/data/huggingface/${MODEL_NAME}
     --pretrain_dir /media/archfool/data/data/my-sup-simcse-${MODEL_NAME}/${DATASET}
     --dataset ${DATASET}
@@ -17,6 +17,7 @@ MODEL_NAME=bert-base-uncased
     --seed 1234
     --freeze_bert_parameters
     --save_model
+    --pretrain
     --use_CL
     --eval_per_epochs 1
     --cl_sample_ratio 0.2
@@ -37,7 +38,6 @@ MODEL_NAME=bert-base-uncased
 --do_train
 --pad_to_max_length
 
-    --pretrain
 --max_seq_length 32
 --load_best_model_at_end
 --metric_for_best_model stsb_spearman

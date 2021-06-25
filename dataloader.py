@@ -163,10 +163,10 @@ class Data:
                     if text_a != text_b:
                         corpus.append(text_a + '\t' + text_b)
 
-        if pre_train_file is not None:
-            with open(pre_train_file, "r", encoding="utf-8") as f:
-                pre_corpus = f.read().split("\n")
-            corpus = corpus + pre_corpus[1:] * 2
+        # if pre_train_file is not None:
+        #     with open(pre_train_file, "r", encoding="utf-8") as f:
+        #         pre_corpus = f.read().split("\n")
+        #     corpus = corpus + pre_corpus[1:] * 2
         random.shuffle(corpus)
         if pre_train_file is not None:
             corpus = corpus[:int(len(corpus) * self.args.cl_sample_ratio)]
