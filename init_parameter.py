@@ -78,4 +78,16 @@ def init_model():
     parser.add_argument("--cl_sample_ratio", default=1.0, type=float,
                         help="The sampling rate for cl of clustering.")
 
+    parser.add_argument("--per_device_train_batch_size", default=8, type=int,
+                        help="Batch size.")
+
+    parser.add_argument("--learning_rate", default=5e-5, type=float,
+                        help="The learning rate for cl-training.")
+
+    parser.add_argument("--pooler_type", default=None, type=str,
+                        help="pooler type.")
+
+    parser.add_argument("--model_name", default=None, type=str,
+                        help="model name.")
+
     return parser

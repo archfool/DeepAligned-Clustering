@@ -8,6 +8,7 @@ MODEL_NAME=bert-base-uncased
     --bert_model /media/archfool/data/data/huggingface/${MODEL_NAME}
     --pretrain_dir /media/archfool/data/data/my-sup-simcse-${MODEL_NAME}/${DATASET}
     --dataset ${DATASET}
+    --model_name ${MODEL_NAME}
     --known_cls_ratio 0.75
     --cluster_num_factor 1.0
     --labeled_ratio 0.1
@@ -34,7 +35,6 @@ MODEL_NAME=bert-base-uncased
 --pooler_type avg
 --overwrite_output_dir
 --temp 0.05
---seed 1234
 --do_train
 --pad_to_max_length
 

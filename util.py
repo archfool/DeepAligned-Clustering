@@ -23,6 +23,7 @@ from scipy.optimize import linear_sum_assignment
 from sklearn import metrics
 import time
 
+
 def hungray_aligment(y_true, y_pred):
     D = max(y_pred.max(), y_true.max()) + 1
     w = np.zeros((D, D))
@@ -44,19 +45,36 @@ def clustering_score(y_true, y_pred):
             'ARI': round(adjusted_rand_score(y_true, y_pred) * 100, 2),
             'NMI': round(normalized_mutual_info_score(y_true, y_pred) * 100, 2)}
 
+
 def save_result(result, args):
     if not os.path.exists(args.save_results_path):
         os.makedirs(args.save_results_path)
 
-    local_time = time.strftime("%m-%d %H:%M:%S", time.localtime())
-    var = [local_time, args.dataset, args.method, args.known_cls_ratio, args.labeled_ratio, args.cluster_num_factor, args.seed]
-    names = ['datetime', 'dataset', 'method', 'known_cls_ratio', 'labeled_ratio', 'cluster_num_factor', 'seed']
-    vars_dict = {k: v for k, v in zip(names, var)}
+    # local_time = time.strftime("%m-%d %H:%M:%S", time.localtime())
+    # var = [local_time, args.dataset, args.method, args.known_cls_ratio, args.labeled_ratio, args.cluster_num_factor,
+    #        args.seed]
+    # names = ['datetime', 'dataset', 'method', 'known_cls_ratio', 'labeled_ratio', 'cluster_num_factor', 'seed']
+    # vars_dict = {k: v for k, v in zip(names, var)}
+    vars_dict = {
+        'datetime': time.strftime("%m-%d %H:%M:%S", time.localtime()),
+        'dataset': args.dataset,
+        'method': args.method,
+        'seed': args.seed,
+        'known_cls_ratio': args.known_cls_ratio,
+        'cluster_num_factor': args.cluster_num_factor,
+        'labeled_ratio': args.labeled_ratio,
+        'pretrain_epoch': args.num_pretrain_epochs,
+        'train_epoch': args.num_train_epochs,
+        'cl_sample_ratio': args.cl_sample_ratio,
+        'batch_size': args.per_device_train_batch_size,
+        'lr': args.learning_rate,
+        'pooler_type': args.pooler_type,
+    }
     results = dict(result, **vars_dict)
     keys = list(results.keys())
     values = list(results.values())
 
-    file_name = 'results' + '.csv'
+    file_name = str(args.model_name) + '_results_log' + '.csv'
     results_path = os.path.join(args.save_results_path, file_name)
 
     if not os.path.exists(results_path):
@@ -72,5 +90,3 @@ def save_result(result, args):
     data_diagram = pd.read_csv(results_path)
 
     # print('test_results', data_diagram)
-
-
