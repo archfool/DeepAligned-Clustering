@@ -69,12 +69,13 @@ def save_result(result, args):
         'batch_size': args.per_device_train_batch_size,
         'lr': args.learning_rate,
         'pooler_type': args.pooler_type,
+        'model_name': args.model_name,
     }
     results = dict(result, **vars_dict)
     keys = list(results.keys())
     values = list(results.values())
 
-    file_name = str(args.model_name) + '_results_log' + '.csv'
+    file_name = '_'.join([str(args.model_name), str(args.cl_sample_ratio), 'results_log']) + '.csv'
     results_path = os.path.join(args.save_results_path, file_name)
 
     if not os.path.exists(results_path):
@@ -90,3 +91,6 @@ def save_result(result, args):
     data_diagram = pd.read_csv(results_path)
 
     # print('test_results', data_diagram)
+
+# from simhash import Simhash
+# Simhash(words1).distance(Simhash(words2))

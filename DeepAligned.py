@@ -356,9 +356,9 @@ if __name__ == '__main__':
         # step_3 准备数据
         data = Data(args, tokenizer)
         data_args.max_seq_length = data.args.max_seq_length
-        data.corpus_dac2cl_train(data_args.pre_train_file)
+        pre_train_file = data.corpus_dac2cl_train(data_args.pre_train_file, args.per_device_train_batch_size, args)
         data_collator, train_dataset = simcse_train.data_prepare(
-            data_args, training_args, model_args, tokenizer, data_args.pre_train_file)
+            data_args, training_args, model_args, tokenizer, pre_train_file)
         training_args.do_train = True
         # trainer = CLTrainer(
         #     model=base_model,
@@ -384,6 +384,7 @@ if __name__ == '__main__':
             )
             # trainer.args.num_train_epochs = args.num_pretrain_epochs
             trainer.model_args = model_args
+            trainer.save_model()  # Saves the tokenizer too for easy upload
 
             # model pre_train
             train_result = trainer.train(model_path=model_args.model_name_or_path, eval_data=data, eval_args=args)
@@ -447,9 +448,10 @@ if __name__ == '__main__':
             # 生成伪标签，更新旧标签/vector为新伪标签/vector，保存为新的语料文本文件
             centroids, pseudo_labels = cluster_align.alignment(
                 data.num_labels, centroids, km, trainer.model.mlp.dense.weight.size()[1], trainer.args.device)
-            data.corpus_dac2cl_train(data_args.train_file, pseudo_labels, data_args.pre_train_file)
+            train_file = data.corpus_dac2cl_train(data_args.train_file, args.per_device_train_batch_size, args,
+                                                  pseudo_labels, data_args.pre_train_file)
             data_collator, train_dataset = simcse_train.data_prepare(
-                data_args, training_args, model_args, tokenizer, data_args.train_file)
+                data_args, training_args, model_args, tokenizer, train_file)
             trainer.train_dataset = train_dataset
 
             train_result = trainer.train()

@@ -1,4 +1,5 @@
 # -*- coding: UTF-8 -*-
+import random
 
 from util import *
 import pandas as pd
@@ -136,7 +137,7 @@ class Data:
 
         return dataloader
 
-    def corpus_dac2cl_train(self, ouput_corpus_path, pseudo_labels=None, pre_train_file=None):
+    def corpus_dac2cl_train(self, ouput_corpus_path, batch_size, args, pseudo_labels=None, pre_train_file=None):
         if pseudo_labels is None:
             known_label_list = self.known_label_list
             train_labeled_examples = self.train_labeled_examples
@@ -146,47 +147,102 @@ class Data:
             train_labeled_examples = self.train_ori_examples
             for idx in range(len(self.train_ori_examples)):
                 train_labeled_examples[idx].label = labels[idx]
-        corpus = []
-        # todo rewrite to speed up
-        # 遍历所有标签
-        for label in known_label_list:
-            example_set = []
-            # 提取当前标签的所有样本
-            for example in train_labeled_examples:
-                if example.label == label:
-                    example_set.append(example.text_a)
-            if len(example_set) <= 1:
-                continue
-            # 将当前标签的所有样本两两组合构成新样本
-            for text_a in example_set:
-                for text_b in example_set:
-                    if text_a != text_b:
-                        corpus.append(text_a + '\t' + text_b)
 
-        # if pre_train_file is not None:
-        #     with open(pre_train_file, "r", encoding="utf-8") as f:
-        #         pre_corpus = f.read().split("\n")
-        #     corpus = corpus + pre_corpus[1:] * 2
-        random.shuffle(corpus)
+        if True:
+            corpus_df = pd.DataFrame(
+                [(example.text_a, example.label) for example in train_labeled_examples],
+                columns=['text', 'label'])
+            corpus_dict = {}
+            for label, tmp_corpus_df in corpus_df.groupby(['label']):
+                tmp_corpus_lst = []
+                for text_a in tmp_corpus_df['text'].to_list():
+                    for text_b in tmp_corpus_df['text'].to_list():
+                        if text_a != text_b:
+                            tmp_corpus_lst.append(text_a + '\t' + text_b)
+                random.shuffle(tmp_corpus_lst)
+                corpus_dict[label] = tmp_corpus_lst
+            corpus = []
+            label_candidate = list(corpus_dict.keys())
+            label_queue = []
+            endless_loop_count = 0
+            # count = 0
+            while True:
+                # if count % 10000 == 0:
+                #     print(count, endless_loop_count)
+                # count += 1
+                label_cur = random.choice(label_candidate)
+                if len(corpus_dict[label_cur]) <= 0:
+                    label_candidate.remove(label_cur)
+                    corpus_dict.pop(label_cur)
+                    continue
+                elif label_cur in label_queue:
+                    if endless_loop_count > batch_size * 10:
+                        break
+                    else:
+                        endless_loop_count += 1
+                        continue
+                else:
+                    corpus_cur = random.choice(corpus_dict[label_cur])
+                    corpus.append(corpus_cur)
+                    corpus_dict[label_cur].remove(corpus_cur)
+                    label_queue.append(label_cur)
+                    label_queue = label_queue[-batch_size:]
+                    endless_loop_count = 0
+        else:
+            corpus = []
+            # todo rewrite to speed up
+            # 遍历所有标签
+            for label in known_label_list:
+                example_set = []
+                # 提取当前标签的所有样本
+                for example in train_labeled_examples:
+                    if example.label == label:
+                        example_set.append(example.text_a)
+                if len(example_set) <= 1:
+                    continue
+                # 将当前标签的所有样本两两组合构成新样本
+                for text_a in example_set:
+                    for text_b in example_set:
+                        if text_a != text_b:
+                            corpus.append(text_a + '\t' + text_b)
+
+            # if pre_train_file is not None:
+            #     with open(pre_train_file, "r", encoding="utf-8") as f:
+            #         pre_corpus = f.read().split("\n")
+            #     corpus = corpus + pre_corpus[1:] * 2
+            random.shuffle(corpus)
+
         if pre_train_file is not None:
             corpus = corpus[:int(len(corpus) * self.args.cl_sample_ratio)]
         corpus = ["sent0\tsent1"] + corpus
 
-        with open(ouput_corpus_path, 'w', encoding='utf-8') as f:
+        if ouput_corpus_path.__contains__("\\"):
+            train_file_lst = ouput_corpus_path.split("\\")
+            train_file_lst[-1] = "_".join([str(args.model_name), str(args.cl_sample_ratio), train_file_lst[-1]])
+            train_file = "\\".join(train_file_lst)
+        elif ouput_corpus_path.__contains__("/"):
+            train_file_lst = ouput_corpus_path.split("/")
+            train_file_lst[-1] = "_".join([str(args.model_name), str(args.cl_sample_ratio), train_file_lst[-1]])
+            train_file = "/".join(train_file_lst)
+        else:
+            train_file = "_".join([str(args.model_name), str(args.cl_sample_ratio), ouput_corpus_path])
+
+        with open(train_file, 'w', encoding='utf-8') as f:
             f.write('\n'.join(corpus))
 
-    # def corpus_dac2cl_eval(self, ouput_corpus_path, test_or_eval="eval"):
-    #     if "eval" == test_or_eval:
-    #         examples = self.eval_examples
-    #     elif "test" == test_or_eval:
-    #         examples = self.test_examples
-    #     else:
-    #         example = None
-    #         print("Input Para test_or_eval ERROR!")
-    #
-    #     example_set = [example.text_a for example in examples]
-    #
-    #     return example_set
+        # def corpus_dac2cl_eval(self, ouput_corpus_path, test_or_eval="eval"):
+        #     if "eval" == test_or_eval:
+        #         examples = self.eval_examples
+        #     elif "test" == test_or_eval:
+        #         examples = self.test_examples
+        #     else:
+        #         example = None
+        #         print("Input Para test_or_eval ERROR!")
+        #
+        #     example_set = [example.text_a for example in examples]
+        #
+        #     return example_set
+        return train_file
 
 
 class InputExample(object):
